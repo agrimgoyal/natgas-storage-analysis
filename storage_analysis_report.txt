@@ -2,7 +2,7 @@
 NATURAL GAS STORAGE REGIONAL CORRELATION ANALYSIS REPORT
 ================================================================================
 
-Analysis Date: 2026-02-04 17:46:17
+Analysis Date: 2026-02-04 17:58:41
 Data Period: 2010-01-01 00:00:00 to 2026-01-23 00:00:00
 Regions Analyzed: 8
 Total Observations: 839
@@ -214,55 +214,55 @@ South Central/Total Lower 48:
 3. DEVIATION EVENTS DETECTED
 --------------------------------------------------------------------------------
 
-Total Events: 1925
-Correlation Breaks: 1712
-Ratio Deviations: 213
+Total Events: 1952
+Correlation Breaks: 1730
+Ratio Deviations: 222
 
 Most Significant Events (by Z-Score):
 
   2014-03-14: East/Midwest
-    Type: Ratio Deviation, Z-Score: 4.54
+    Type: Ratio Deviation, Z-Score: 4.78
 
   2014-04-04: East/Midwest
-    Type: Ratio Deviation, Z-Score: 4.52
+    Type: Ratio Deviation, Z-Score: 4.75
 
   2014-03-07: East/Midwest
-    Type: Ratio Deviation, Z-Score: 4.48
+    Type: Ratio Deviation, Z-Score: 4.71
 
   2014-04-18: East/Midwest
-    Type: Ratio Deviation, Z-Score: 4.46
+    Type: Ratio Deviation, Z-Score: 4.69
 
   2014-02-28: East/Midwest
-    Type: Ratio Deviation, Z-Score: 4.40
+    Type: Ratio Deviation, Z-Score: 4.63
 
   2014-03-21: East/Midwest
-    Type: Ratio Deviation, Z-Score: 4.39
+    Type: Ratio Deviation, Z-Score: 4.61
 
   2014-03-28: East/Midwest
-    Type: Ratio Deviation, Z-Score: 4.14
+    Type: Ratio Deviation, Z-Score: 4.32
 
   2014-04-11: East/Midwest
-    Type: Ratio Deviation, Z-Score: 4.06
+    Type: Ratio Deviation, Z-Score: 4.23
 
   2014-04-25: East/Midwest
-    Type: Ratio Deviation, Z-Score: 3.95
+    Type: Ratio Deviation, Z-Score: 4.10
 
   2014-02-21: East/Midwest
-    Type: Ratio Deviation, Z-Score: 3.70
+    Type: Ratio Deviation, Z-Score: 3.83
 
 --------------------------------------------------------------------------------
 4. PRICE IMPACT ANALYSIS
 --------------------------------------------------------------------------------
 
-Events with Price Data: 1925
-Average Price Change: 8.33%
+Events with Price Data: 1952
+Average Price Change: 8.35%
 Median Price Change: 10.30%
-Average Volatility: $1.51
+Average Volatility: $1.52
 
-Positive Price Movements: 1717 (89.2%)
-Negative Price Movements: 208 (10.8%)
+Positive Price Movements: 1744 (89.3%)
+Negative Price Movements: 208 (10.7%)
 
-Correlation (|Z-Score| vs |Price Change%|): 0.268
+Correlation (|Z-Score| vs |Price Change%|): 0.246
 Interpretation: Weak relationship
 
 ================================================================================

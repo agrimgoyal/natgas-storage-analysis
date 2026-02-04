@@ -254,11 +254,12 @@ class StorageCorrelationAnalyzer:
             if len(corr_clean) < min_history:
                 continue
 
-            # Calculate EXPANDING mean and std (only uses data up to each point)
-            expanding_mean = corr_clean.expanding(min_periods=min_history).mean()
-            expanding_std = corr_clean.expanding(min_periods=min_history).std()
+            # Calculate EXPANDING mean and std, then SHIFT by 1 to exclude current observation
+            # This ensures we only use data BEFORE each point (true out-of-sample)
+            expanding_mean = corr_clean.expanding(min_periods=min_history).mean().shift(1)
+            expanding_std = corr_clean.expanding(min_periods=min_history).std().shift(1)
 
-            # Calculate Z-scores using only historical data available at each point
+            # Calculate Z-scores using only historical data BEFORE each point
             z_scores = (corr_clean - expanding_mean) / expanding_std
 
             # Find dates where correlation dropped significantly below historical mean
@@ -308,11 +309,12 @@ class StorageCorrelationAnalyzer:
             if len(ratio_clean) < min_history:
                 continue
 
-            # Calculate EXPANDING mean and std (only uses data up to each point)
-            expanding_mean = ratio_clean.expanding(min_periods=min_history).mean()
-            expanding_std = ratio_clean.expanding(min_periods=min_history).std()
+            # Calculate EXPANDING mean and std, then SHIFT by 1 to exclude current observation
+            # This ensures we only use data BEFORE each point (true out-of-sample)
+            expanding_mean = ratio_clean.expanding(min_periods=min_history).mean().shift(1)
+            expanding_std = ratio_clean.expanding(min_periods=min_history).std().shift(1)
 
-            # Calculate Z-scores using only historical data available at each point
+            # Calculate Z-scores using only historical data BEFORE each point
             z_scores = (ratio_clean - expanding_mean) / expanding_std
 
             # Find dates where ratio deviated significantly from historical mean
