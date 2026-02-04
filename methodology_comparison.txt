@@ -1,0 +1,129 @@
+================================================================================
+METHODOLOGY COMPARISON: OLD (LOOK-AHEAD) vs NEW (EXPANDING WINDOW)
+================================================================================
+Generated: 2026-02-04
+
+SUMMARY OF CHANGES
+================================================================================
+
+The original methodology calculated mean and standard deviation using the ENTIRE
+dataset (2010-2026), then applied these values retroactively to detect historical
+deviations. This creates LOOK-AHEAD BIAS - using information from the future to
+make decisions about the past.
+
+The NEW methodology uses an EXPANDING WINDOW approach:
+  - Mean and std are calculated using ONLY data available up to each observation
+  - Minimum 52 weeks of history required before flagging any events
+  - Z-scores are recalculated at each point using only prior information
+  - This makes the analysis realistic for live trading applications
+
+================================================================================
+RESULTS COMPARISON
+================================================================================
+
+METRIC                          OLD METHODOLOGY    NEW METHODOLOGY    CHANGE
+--------------------------------------------------------------------------------
+Total Deviation Events          1,439              1,925              +33.8%
+  - Correlation Breaks          (not separated)    1,712
+  - Ratio Deviations            (not separated)    213
+
+Events with Price Data          1,439              1,925              +33.8%
+
+PRICE IMPACT METRICS:
+Average Price Change            7.80%              8.33%              +0.53pp
+Median Price Change             10.30%             10.30%             unchanged
+Directional Bias (positive)     86.4%              89.2%              +2.8pp
+Z-Score/Price Correlation       0.342              0.268              -0.074
+
+================================================================================
+KEY FINDINGS
+================================================================================
+
+1. MORE EVENTS DETECTED (+33.8%)
+   - Old: 1,439 events
+   - New: 1,925 events
+
+   The expanding window approach detects MORE events because early deviations
+   that appeared "normal" when measured against the full dataset are now
+   correctly identified as significant when measured against only the data
+   available at that time.
+
+2. DIRECTIONAL BIAS HOLDS AND STRENGTHENS
+   - Old: 86.4% of events followed by price increases
+   - New: 89.2% of events followed by price increases
+
+   The bullish bias following deviation events is STRONGER with the corrected
+   methodology, suggesting the trading signal is robust and not an artifact
+   of look-ahead bias.
+
+3. Z-SCORE/PRICE CORRELATION MODERATELY WEAKER
+   - Old: 0.342 (moderate positive)
+   - New: 0.268 (weak-moderate positive)
+
+   The correlation between deviation magnitude and price change magnitude
+   is somewhat weaker but still positive. This suggests that while larger
+   deviations do tend to precede larger price moves, the relationship is
+   not as strong as the biased methodology suggested.
+
+4. EXTREME EVENTS STILL DETECTED (AND STRONGER)
+
+   2014 Polar Vortex (Jan-Mar 2014):
+   - Old: 5 events, max |Z-Score| = 3.74
+   - New: 5 events, max |Z-Score| = 4.40 (+17.6%)
+
+   The Polar Vortex events are STRONGER in the new methodology because
+   the early-2014 readings are compared to only ~4 years of prior data
+   rather than 16 years including the recovery period.
+
+   Dec 2022 Winter Storm Elliott:
+   - Old: 49 events, max |Z-Score| = 7.23
+   - New: 49 events, max |Z-Score| = 7.99 (+10.5%)
+
+   Winter Storm Elliott events are also stronger when measured against
+   only pre-event history.
+
+================================================================================
+INTERPRETATION FOR TRADING
+================================================================================
+
+GOOD NEWS:
+- The core finding (deviation events followed by price increases) is ROBUST
+- The directional bias is actually STRONGER with unbiased methodology
+- Extreme weather events are still clearly detectable
+- The methodology is now suitable for live trading applications
+
+CAUTION:
+- The Z-score/price correlation is weaker than previously thought
+- More events are flagged, which may increase false positive rate
+- Historical backtest results may differ from live trading performance
+
+RECOMMENDATION:
+Use the expanding window methodology for any forward-looking analysis or
+trading strategy development. The old methodology overstated the Z-score/price
+correlation but understated the directional bias, creating a mixed picture
+of the strategy's true characteristics.
+
+================================================================================
+DETAILED Z-SCORE DISTRIBUTION (NEW METHODOLOGY)
+================================================================================
+
+Mean |Z-Score|:           3.12
+Max |Z-Score|:            10.09
+Events with |Z| > 2:      1,925 (by definition - threshold)
+Events with |Z| > 3:      747 (38.8%)
+Events with |Z| > 4:      308 (16.0%)
+Events with |Z| > 5:      142 (7.4%)
+
+================================================================================
+FILES GENERATED
+================================================================================
+
+- deviation_events.csv         : All deviation events (new methodology)
+- price_impact_analysis.csv    : Price impact analysis (new methodology)
+- storage_analysis_report.txt  : Full analysis report
+- methodology_comparison.txt   : This comparison document
+- Visualization PNGs (1-5)     : Charts updated with new methodology
+
+================================================================================
+END OF COMPARISON
+================================================================================

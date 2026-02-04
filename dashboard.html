@@ -1,0 +1,1101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Natural Gas Storage Analytics | v6.0 - Correlation Analysis</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+
+    <style>
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #1f2937; }
+        ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #6b7280; }
+        
+        .glass-panel {
+            background: rgba(31, 41, 55, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(75, 85, 99, 0.4);
+        }
+        
+        .loader {
+            border: 3px solid #f3f3f3;
+            border-radius: 50%;
+            border-top: 3px solid #3b82f6;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        .correlation-cell {
+            transition: all 0.2s;
+        }
+        .correlation-cell:hover {
+            transform: scale(1.05);
+            z-index: 10;
+        }
+        
+        .anomaly-marker {
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-100 font-sans min-h-screen flex flex-col">
+
+    <header class="bg-gray-800 border-b border-gray-700 p-4 sticky top-0 z-50 shadow-lg">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <div class="bg-blue-600 p-2 rounded-lg">
+                    <i class="fa-solid fa-fire-flame-simple text-white text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold tracking-tight text-white">GasAnalytics <span class="text-blue-500">Pro</span></h1>
+                    <p class="text-xs text-gray-400">Correlation & Anomaly Detection</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-4">
+                <div id="loading-indicator" class="hidden flex items-center gap-2 text-blue-400 text-sm">
+                    <div class="loader"></div> Loading...
+                </div>
+                <div id="data-source-badge" class="hidden px-3 py-1 rounded-full bg-gray-700 border border-gray-600 text-xs text-gray-300">
+                    <i class="fa-solid fa-database mr-1"></i> <span id="source-name">Default Data</span>
+                </div>
+
+                <label class="cursor-pointer bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg border border-gray-600 transition flex items-center gap-2 text-sm shadow-sm group">
+                    <i class="fa-solid fa-upload group-hover:text-blue-400 transition"></i>
+                    <span>Upload New File</span>
+                    <input type="file" id="file-input" class="hidden" accept=".xls,.xlsx">
+                </label>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1 max-w-7xl mx-auto w-full p-4 md:p-6 space-y-6">
+
+        <div id="empty-state" class="hidden flex flex-col items-center justify-center h-[60vh] text-center space-y-4">
+            <div class="bg-gray-800 p-8 rounded-2xl border border-gray-700 shadow-xl max-w-md">
+                <i class="fa-solid fa-chart-line text-6xl text-gray-600 mb-6"></i>
+                <h2 class="text-2xl font-bold text-white mb-2">No Data Found</h2>
+                <p class="text-gray-400 mb-6">Could not load default data. Please upload your EIA Excel file (<code class="bg-gray-900 px-2 py-1 rounded text-blue-400 text-sm">ngshistory.xls</code>).</p>
+                <button onclick="document.getElementById('file-input').click()" class="bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-lg font-medium transition w-full shadow-lg shadow-blue-900/20">
+                    Select File
+                </button>
+            </div>
+        </div>
+
+        <div id="dashboard-content" class="hidden space-y-6">
+            
+            <!-- Navigation Tabs -->
+            <div class="flex overflow-x-auto pb-2 gap-2 scrollbar-hide bg-gray-800 p-2 rounded-lg border border-gray-700">
+                <button id="tab-overview" class="whitespace-nowrap px-4 py-2 rounded-lg font-medium transition text-sm bg-blue-600 text-white shadow-lg" onclick="switchTab('overview')">
+                    <i class="fa-solid fa-house mr-2"></i>Overview
+                </button>
+                <button id="tab-correlation" class="whitespace-nowrap px-4 py-2 rounded-lg font-medium transition text-sm bg-gray-700 text-gray-300 hover:bg-gray-600" onclick="switchTab('correlation')">
+                    <i class="fa-solid fa-diagram-project mr-2"></i>Correlation Analysis
+                </button>
+                <button id="tab-ratios" class="whitespace-nowrap px-4 py-2 rounded-lg font-medium transition text-sm bg-gray-700 text-gray-300 hover:bg-gray-600" onclick="switchTab('ratios')">
+                    <i class="fa-solid fa-divide mr-2"></i>Regional Ratios
+                </button>
+                <button id="tab-anomalies" class="whitespace-nowrap px-4 py-2 rounded-lg font-medium transition text-sm bg-gray-700 text-gray-300 hover:bg-gray-600" onclick="switchTab('anomalies')">
+                    <i class="fa-solid fa-triangle-exclamation mr-2"></i>Anomaly Events
+                </button>
+            </div>
+
+            <!-- OVERVIEW TAB -->
+            <div id="content-overview" class="space-y-6">
+                <div class="flex overflow-x-auto pb-2 gap-2 scrollbar-hide" id="region-tabs"></div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="glass-panel p-5 rounded-xl relative overflow-hidden group">
+                        <div class="absolute right-0 top-0 p-4 opacity-10 group-hover:opacity-20 transition">
+                            <i class="fa-solid fa-cube text-6xl text-blue-500"></i>
+                        </div>
+                        <p class="text-sm text-gray-400 font-medium">Current Storage</p>
+                        <h3 class="text-3xl font-bold text-white mt-1" id="kpi-storage">--</h3>
+                        <div class="mt-2 text-xs flex items-center gap-2">
+                            <span id="kpi-storage-badge" class="px-2 py-0.5 rounded bg-gray-700 text-gray-300">--</span>
+                            <span class="text-gray-500">BCF</span>
+                        </div>
+                    </div>
+                    <div class="glass-panel p-5 rounded-xl relative overflow-hidden group">
+                        <div class="absolute right-0 top-0 p-4 opacity-10 group-hover:opacity-20 transition">
+                            <i class="fa-solid fa-arrow-right-arrow-left text-6xl text-purple-500"></i>
+                        </div>
+                        <p class="text-sm text-gray-400 font-medium">Weekly Net Flow</p>
+                        <h3 class="text-3xl font-bold text-white mt-1" id="kpi-flow">--</h3>
+                        <div class="mt-2 text-xs text-gray-400" id="kpi-flow-desc">Injection/Withdrawal</div>
+                    </div>
+                    <div class="glass-panel p-5 rounded-xl relative overflow-hidden group">
+                        <div class="absolute right-0 top-0 p-4 opacity-10 group-hover:opacity-20 transition">
+                            <i class="fa-solid fa-scale-balanced text-6xl text-orange-500"></i>
+                        </div>
+                        <p class="text-sm text-gray-400 font-medium">vs 5-Year Avg</p>
+                        <h3 class="text-3xl font-bold text-white mt-1" id="kpi-diff-avg">--</h3>
+                        <div class="mt-2 w-full bg-gray-700 rounded-full h-1.5">
+                            <div id="kpi-diff-bar" class="bg-orange-500 h-1.5 rounded-full" style="width: 50%"></div>
+                        </div>
+                    </div>
+                    <div class="glass-panel p-5 rounded-xl relative overflow-hidden group">
+                        <div class="absolute right-0 top-0 p-4 opacity-10 group-hover:opacity-20 transition">
+                            <i class="fa-solid fa-battery-half text-6xl text-green-500"></i>
+                        </div>
+                        <p class="text-sm text-gray-400 font-medium">Capacity Utilization</p>
+                        <h3 class="text-3xl font-bold text-white mt-1" id="kpi-capacity">--%</h3>
+                        <div class="mt-2 text-xs text-gray-500">
+                            Based on <span id="kpi-cap-total">--</span> BCF Capacity
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div class="glass-panel p-5 rounded-xl lg:col-span-2 shadow-lg">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                                <i class="fa-solid fa-chart-area text-blue-500"></i> Storage Level
+                            </h3>
+                        </div>
+                        <div id="chart-storage" class="w-full h-[400px]"></div>
+                    </div>
+                    
+                    <div class="glass-panel p-5 rounded-xl shadow-lg">
+                        <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                            <i class="fa-solid fa-chart-bar text-purple-500"></i> Weekly Net Flows
+                        </h3>
+                        <div id="chart-flow" class="w-full h-[400px]"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CORRELATION TAB -->
+            <div id="content-correlation" class="hidden space-y-6">
+                <div class="glass-panel p-6 rounded-xl border-l-4 border-purple-500">
+                    <h3 class="text-lg font-bold text-white mb-2 flex items-center gap-2">
+                        <i class="fa-solid fa-info-circle text-purple-400"></i> How to Read This Analysis
+                    </h3>
+                    <p class="text-sm text-gray-400 leading-relaxed">
+                        This section analyzes how storage levels across different regions move together. High correlations (close to 1.0) indicate regions move in tandem. 
+                        When correlations drop significantly, it may signal regional supply/demand imbalances worth investigating.
+                    </p>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="glass-panel p-5 rounded-xl shadow-lg">
+                        <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                            <i class="fa-solid fa-table-cells text-purple-500"></i> Current Correlation Matrix
+                        </h3>
+                        <div class="text-xs text-gray-400 mb-3">Based on last 26 weeks of data</div>
+                        <div id="correlation-heatmap" class="overflow-x-auto"></div>
+                    </div>
+
+                    <div class="glass-panel p-5 rounded-xl shadow-lg">
+                        <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                            <i class="fa-solid fa-chart-line text-blue-500"></i> Correlation Stability Over Time
+                        </h3>
+                        <div class="mb-3">
+                            <label class="text-xs text-gray-400 mr-2">Region Pair:</label>
+                            <select id="correlation-pair-selector" class="bg-gray-700 text-white text-sm rounded px-3 py-1.5 border-none outline-none">
+                            </select>
+                        </div>
+                        <div id="chart-correlation-time" class="w-full h-[350px]"></div>
+                    </div>
+                </div>
+
+                <div class="glass-panel p-5 rounded-xl shadow-lg">
+                    <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                        <i class="fa-solid fa-arrow-down-wide-short text-green-500"></i> Strongest & Weakest Correlations
+                    </h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="correlation-rankings"></div>
+                </div>
+            </div>
+
+            <!-- RATIOS TAB -->
+            <div id="content-ratios" class="hidden space-y-6">
+                <div class="glass-panel p-6 rounded-xl border-l-4 border-orange-500">
+                    <h3 class="text-lg font-bold text-white mb-2 flex items-center gap-2">
+                        <i class="fa-solid fa-info-circle text-orange-400"></i> Regional Ratio Analysis
+                    </h3>
+                    <p class="text-sm text-gray-400 leading-relaxed">
+                        Regional storage ratios reveal relative supply distributions. When ratios deviate significantly from historical norms (shown as bands), 
+                        it indicates unusual regional imbalances that may precede price movements.
+                    </p>
+                </div>
+
+                <div class="glass-panel p-5 rounded-xl shadow-lg">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-divide text-orange-500"></i> Key Regional Ratios
+                        </h3>
+                        <div>
+                            <label class="text-xs text-gray-400 mr-2">Select Ratio:</label>
+                            <select id="ratio-selector" class="bg-gray-700 text-white text-sm rounded px-3 py-1.5 border-none outline-none">
+                            </select>
+                        </div>
+                    </div>
+                    <div id="chart-ratios" class="w-full h-[450px]"></div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="glass-panel p-5 rounded-xl">
+                        <p class="text-sm text-gray-400 font-medium mb-1">Current Ratio Value</p>
+                        <h3 class="text-2xl font-bold text-white" id="ratio-current">--</h3>
+                        <div class="mt-2 text-xs" id="ratio-current-desc">--</div>
+                    </div>
+                    <div class="glass-panel p-5 rounded-xl">
+                        <p class="text-sm text-gray-400 font-medium mb-1">Historical Mean (3Y)</p>
+                        <h3 class="text-2xl font-bold text-white" id="ratio-mean">--</h3>
+                        <div class="mt-2 text-xs text-gray-500">Average ratio value</div>
+                    </div>
+                    <div class="glass-panel p-5 rounded-xl">
+                        <p class="text-sm text-gray-400 font-medium mb-1">Z-Score (Deviation)</p>
+                        <h3 class="text-2xl font-bold" id="ratio-zscore">--</h3>
+                        <div class="mt-2 text-xs text-gray-500" id="ratio-zscore-desc">Standard deviations from mean</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ANOMALIES TAB -->
+            <div id="content-anomalies" class="hidden space-y-6">
+                <div class="glass-panel p-6 rounded-xl border-l-4 border-red-500">
+                    <h3 class="text-lg font-bold text-white mb-2 flex items-center gap-2">
+                        <i class="fa-solid fa-info-circle text-red-400"></i> Anomaly Detection
+                    </h3>
+                    <p class="text-sm text-gray-400 leading-relaxed">
+                        Anomalies are detected when: (1) correlation drops >0.3 from rolling average, or (2) regional ratios exceed ±2 standard deviations. 
+                        These events may signal market dislocations. Add price data to your analysis to check if these anomalies preceded significant price movements.
+                    </p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="glass-panel p-5 rounded-xl">
+                        <div class="flex items-center gap-3 mb-2">
+                            <div class="bg-red-900/30 p-2 rounded">
+                                <i class="fa-solid fa-triangle-exclamation text-red-400 text-xl"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-400">Total Anomalies</p>
+                                <h3 class="text-2xl font-bold text-white" id="anomaly-total">--</h3>
+                            </div>
+                        </div>
+                        <div class="text-xs text-gray-500">Last 2 years</div>
+                    </div>
+                    <div class="glass-panel p-5 rounded-xl">
+                        <div class="flex items-center gap-3 mb-2">
+                            <div class="bg-purple-900/30 p-2 rounded">
+                                <i class="fa-solid fa-link-slash text-purple-400 text-xl"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-400">Correlation Breaks</p>
+                                <h3 class="text-2xl font-bold text-white" id="anomaly-correlation">--</h3>
+                            </div>
+                        </div>
+                        <div class="text-xs text-gray-500">Correlation drops</div>
+                    </div>
+                    <div class="glass-panel p-5 rounded-xl">
+                        <div class="flex items-center gap-3 mb-2">
+                            <div class="bg-orange-900/30 p-2 rounded">
+                                <i class="fa-solid fa-chart-simple text-orange-400 text-xl"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-400">Ratio Deviations</p>
+                                <h3 class="text-2xl font-bold text-white" id="anomaly-ratio">--</h3>
+                            </div>
+                        </div>
+                        <div class="text-xs text-gray-500">Ratio Z-score > 2</div>
+                    </div>
+                </div>
+
+                <div class="glass-panel p-5 rounded-xl shadow-lg">
+                    <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                        <i class="fa-solid fa-list text-red-500"></i> Recent Anomaly Events
+                    </h3>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm">
+                            <thead class="text-xs text-gray-500 uppercase bg-gray-800/50">
+                                <tr>
+                                    <th class="px-4 py-3 text-left rounded-l-lg">Date</th>
+                                    <th class="px-4 py-3 text-left">Type</th>
+                                    <th class="px-4 py-3 text-left">Description</th>
+                                    <th class="px-4 py-3 text-right">Severity</th>
+                                    <th class="px-4 py-3 text-center rounded-r-lg">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="anomaly-table-body" class="text-gray-300">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="glass-panel p-5 rounded-xl shadow-lg">
+                    <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                        <i class="fa-solid fa-timeline text-blue-500"></i> Anomaly Timeline
+                    </h3>
+                    <div id="chart-anomaly-timeline" class="w-full h-[400px]"></div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <footer class="border-t border-gray-800 mt-12 py-6 bg-gray-900">
+        <div class="max-w-7xl mx-auto px-6 text-center text-gray-500 text-sm">
+            <p>&copy; 2026 Natural Gas Storage Analyzer v6.0 - Advanced Correlation Analysis</p>
+        </div>
+    </footer>
+
+    <script>
+        // CONFIG
+        const DEFAULT_FILE_URL = './ngshistory.xls';
+        
+        const REGION_CAPACITY = {
+            'Total Lower 48': 4671, 'East': 1043, 'Midwest': 1221, 'Mountain': 479,
+            'Pacific': 369, 'South Central': 1558, 'Salt': 471, 'Non Salt': 1088
+        };
+
+        const REGION_MAPPING = {
+            'Total Lower 48': ['total lower 48', 'lower 48'],
+            'Salt': ['salt', 'south central salt'],
+            'Non Salt': ['nonsalt', 'non-salt', 'south central nonsalt'],
+            'East': ['east'], 'Midwest': ['midwest'], 'Mountain': ['mountain'],
+            'Pacific': ['pacific'], 'South Central': ['south central']
+        };
+
+        const COLORS = {
+            bg: '#111827', text: '#f3f4f6', grid: '#374151',
+            blue: '#3b82f6', orange: '#f97316', green: '#22c55e', red: '#ef4444',
+            purple: '#a855f7', yellow: '#eab308'
+        };
+
+        // Key regional ratio pairs to analyze
+        const KEY_RATIOS = [
+            { name: 'East / Midwest', num: 'East', denom: 'Midwest' },
+            { name: 'Salt / Non Salt', num: 'Salt', denom: 'Non Salt' },
+            { name: 'Pacific / Mountain', num: 'Pacific', denom: 'Mountain' },
+            { name: 'South Central / Total Lower 48', num: 'South Central', denom: 'Total Lower 48' }
+        ];
+
+        let GLOBAL_DATA = null;
+        let ACTIVE_REGION = 'Total Lower 48';
+        let ACTIVE_TAB = 'overview';
+        let AVAILABLE_REGIONS = [];
+        let CORRELATION_DATA = null;
+        let RATIO_DATA = null;
+        let ANOMALY_DATA = null;
+
+        // --- INIT ---
+        document.addEventListener('DOMContentLoaded', init);
+        document.getElementById('file-input').addEventListener('change', handleFileUpload);
+
+        async function init() {
+            document.getElementById('loading-indicator').classList.remove('hidden');
+            
+            try {
+                const response = await fetch(DEFAULT_FILE_URL);
+                if (!response.ok) throw new Error("Default file not found");
+                
+                const arrayBuffer = await response.arrayBuffer();
+                loadWorkbook(arrayBuffer, "Default Data");
+                
+            } catch (err) {
+                console.warn("Could not load default file:", err);
+                document.getElementById('empty-state').classList.remove('hidden');
+                document.getElementById('loading-indicator').classList.add('hidden');
+            }
+        }
+
+        async function handleFileUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            document.getElementById('loading-indicator').classList.remove('hidden');
+            document.getElementById('source-name').innerText = "Processing...";
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                loadWorkbook(new Uint8Array(e.target.result), file.name);
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function loadWorkbook(data, sourceName) {
+            try {
+                const workbook = XLSX.read(data, {type: 'array'});
+                let targetSheetName = workbook.SheetNames.find(n => n.toLowerCase().includes('hist')) || workbook.SheetNames[1] || workbook.SheetNames[0];
+                const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[targetSheetName], {header: 1});
+
+                processExcelData(jsonData);
+
+                document.getElementById('empty-state').classList.add('hidden');
+                document.getElementById('dashboard-content').classList.remove('hidden');
+                document.getElementById('loading-indicator').classList.add('hidden');
+                
+                const badge = document.getElementById('data-source-badge');
+                badge.classList.remove('hidden');
+                document.getElementById('source-name').innerText = sourceName;
+                
+            } catch (err) {
+                alert("Error processing file: " + err.message);
+                console.error(err);
+                document.getElementById('loading-indicator').classList.add('hidden');
+            }
+        }
+
+        function processExcelData(rawRows) {
+            let headerIdx = -1;
+            for(let i=0; i<20; i++) {
+                const rowStr = rawRows[i].map(c => String(c).toLowerCase()).join(' ');
+                if(rowStr.includes('week ending') && rowStr.includes('total lower 48')) {
+                    headerIdx = i;
+                    break;
+                }
+            }
+            if(headerIdx === -1) throw new Error("Could not find header row");
+
+            const headers = rawRows[headerIdx].map(h => String(h).trim());
+            const colMap = {};
+            
+            headers.forEach((h, idx) => {
+                const hLow = h.toLowerCase();
+                if(hLow.includes('week ending')) colMap['Date'] = idx;
+                for(const [regionKey, keywords] of Object.entries(REGION_MAPPING)) {
+                    if(regionKey === 'South Central' && hLow.includes('salt')) continue;
+                    if(keywords.some(k => hLow.includes(k) || hLow === k)) if(!colMap[regionKey]) colMap[regionKey] = idx;
+                }
+            });
+
+            const processedData = [];
+
+            rawRows.slice(headerIdx + 1).forEach(row => {
+                const dateVal = row[colMap['Date']];
+                if(!dateVal) return;
+                let dateObj = typeof dateVal === 'number' ? new Date(Math.round((dateVal - 25569)*86400*1000)) : new Date(dateVal);
+                if(isNaN(dateObj.getTime())) return;
+
+                const year = dateObj.getFullYear();
+
+                const entry = { date: dateObj, year: year, weekNum: getWeekNumber(dateObj), regions: {} };
+                for(const [rKey, colIdx] of Object.entries(colMap)) {
+                    if(rKey === 'Date') continue;
+                    const val = parseFloat(row[colIdx]);
+                    entry.regions[rKey] = isNaN(val) ? null : val;
+                }
+                processedData.push(entry);
+            });
+
+            processedData.sort((a,b) => a.date - b.date);
+
+            // Flows & Avgs
+            const groupedByWeek = {};
+            processedData.forEach(d => {
+                if(!groupedByWeek[d.weekNum]) groupedByWeek[d.weekNum] = [];
+                groupedByWeek[d.weekNum].push(d);
+            });
+
+            processedData.forEach((d, i) => {
+                for(const rKey of Object.keys(d.regions)) {
+                    if(i > 0 && processedData[i-1].regions[rKey] != null && d.regions[rKey] != null) {
+                        d[`${rKey}_flow`] = d.regions[rKey] - processedData[i-1].regions[rKey];
+                    } else d[`${rKey}_flow`] = null;
+
+                    const matches = groupedByWeek[d.weekNum] || [];
+                    const pastVals = matches.filter(m => m.year >= d.year - 5 && m.year < d.year).map(m => m.regions[rKey]).filter(v => v != null);
+                    
+                    if(pastVals.length > 0) {
+                        const avg = pastVals.reduce((a,b) => a+b, 0) / pastVals.length;
+                        d[`${rKey}_5yr_avg`] = avg;
+                        d[`${rKey}_diff_avg`] = (d.regions[rKey] - avg);
+                    } else {
+                        d[`${rKey}_5yr_avg`] = null;
+                        d[`${rKey}_diff_avg`] = null;
+                    }
+                }
+            });
+
+            GLOBAL_DATA = processedData;
+            AVAILABLE_REGIONS = Object.keys(REGION_MAPPING).filter(k => colMap[k] !== undefined);
+            
+            // Calculate advanced analytics
+            calculateCorrelationData();
+            calculateRatioData();
+            detectAnomalies();
+            
+            generateTabs(AVAILABLE_REGIONS);
+            populateCorrelationPairSelector();
+            populateRatioSelector();
+            updateDashboard();
+        }
+
+        // ========== CORRELATION ANALYSIS ==========
+        function calculateCorrelationData() {
+            const windowSize = 26; // 26 weeks = ~6 months
+            CORRELATION_DATA = { rolling: [], current: {} };
+            
+            const regions = AVAILABLE_REGIONS.filter(r => r !== 'Total Lower 48' && r !== 'South Central');
+            
+            // Calculate rolling correlations for all pairs
+            for(let i = windowSize; i < GLOBAL_DATA.length; i++) {
+                const windowData = GLOBAL_DATA.slice(i - windowSize, i);
+                const entry = { date: GLOBAL_DATA[i].date, correlations: {} };
+                
+                for(let j = 0; j < regions.length; j++) {
+                    for(let k = j + 1; k < regions.length; k++) {
+                        const r1 = regions[j];
+                        const r2 = regions[k];
+                        const key = `${r1}|${r2}`;
+                        
+                        const values1 = windowData.map(d => d.regions[r1]).filter(v => v != null);
+                        const values2 = windowData.map(d => d.regions[r2]).filter(v => v != null);
+                        
+                        if(values1.length > 10 && values2.length > 10) {
+                            const corr = pearsonCorrelation(values1, values2);
+                            entry.correlations[key] = corr;
+                        }
+                    }
+                }
+                
+                CORRELATION_DATA.rolling.push(entry);
+            }
+            
+            // Current correlations (last 26 weeks)
+            if(CORRELATION_DATA.rolling.length > 0) {
+                CORRELATION_DATA.current = CORRELATION_DATA.rolling[CORRELATION_DATA.rolling.length - 1].correlations;
+            }
+        }
+
+        function pearsonCorrelation(x, y) {
+            const n = Math.min(x.length, y.length);
+            const sumX = x.reduce((a,b) => a+b, 0);
+            const sumY = y.reduce((a,b) => a+b, 0);
+            const sumXY = x.reduce((sum, xi, i) => sum + xi * y[i], 0);
+            const sumX2 = x.reduce((sum, xi) => sum + xi * xi, 0);
+            const sumY2 = y.reduce((sum, yi) => sum + yi * yi, 0);
+            
+            const numerator = n * sumXY - sumX * sumY;
+            const denominator = Math.sqrt((n * sumX2 - sumX * sumX) * (n * sumY2 - sumY * sumY));
+            
+            return denominator === 0 ? 0 : numerator / denominator;
+        }
+
+        // ========== RATIO ANALYSIS ==========
+        function calculateRatioData() {
+            RATIO_DATA = {};
+            
+            KEY_RATIOS.forEach(ratio => {
+                const data = [];
+                GLOBAL_DATA.forEach(d => {
+                    const num = d.regions[ratio.num];
+                    const denom = d.regions[ratio.denom];
+                    if(num != null && denom != null && denom !== 0) {
+                        data.push({
+                            date: d.date,
+                            value: num / denom
+                        });
+                    }
+                });
+                
+                // Calculate statistics (last 3 years)
+                const threeYearsAgo = new Date(GLOBAL_DATA[GLOBAL_DATA.length-1].date);
+                threeYearsAgo.setFullYear(threeYearsAgo.getFullYear() - 3);
+                const recent = data.filter(d => d.date >= threeYearsAgo);
+                
+                const values = recent.map(d => d.value);
+                const mean = values.reduce((a,b) => a+b, 0) / values.length;
+                const variance = values.reduce((sum, v) => sum + Math.pow(v - mean, 2), 0) / values.length;
+                const stdDev = Math.sqrt(variance);
+                
+                RATIO_DATA[ratio.name] = {
+                    data: data,
+                    stats: {
+                        mean: mean,
+                        stdDev: stdDev,
+                        upperBand1: mean + stdDev,
+                        lowerBand1: mean - stdDev,
+                        upperBand2: mean + 2 * stdDev,
+                        lowerBand2: mean - 2 * stdDev
+                    }
+                };
+            });
+        }
+
+        // ========== ANOMALY DETECTION ==========
+        function detectAnomalies() {
+            ANOMALY_DATA = [];
+            
+            const twoYearsAgo = new Date(GLOBAL_DATA[GLOBAL_DATA.length-1].date);
+            twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2);
+            
+            // Detect correlation drops
+            const windowSize = 26;
+            CORRELATION_DATA.rolling.forEach((entry, i) => {
+                if(entry.date < twoYearsAgo) return;
+                
+                Object.keys(entry.correlations).forEach(key => {
+                    const [r1, r2] = key.split('|');
+                    const currentCorr = entry.correlations[key];
+                    
+                    // Compare to average of previous 52 weeks
+                    const start = Math.max(0, i - 52);
+                    const prevValues = CORRELATION_DATA.rolling.slice(start, i)
+                        .map(e => e.correlations[key])
+                        .filter(v => v != null);
+                    
+                    if(prevValues.length > 10) {
+                        const avgCorr = prevValues.reduce((a,b) => a+b, 0) / prevValues.length;
+                        const drop = avgCorr - currentCorr;
+                        
+                        if(drop > 0.3) { // Significant correlation drop
+                            ANOMALY_DATA.push({
+                                date: entry.date,
+                                type: 'Correlation Drop',
+                                description: `${r1} vs ${r2} correlation dropped from ${avgCorr.toFixed(2)} to ${currentCorr.toFixed(2)}`,
+                                severity: Math.min(drop / 0.5, 1),
+                                details: { r1, r2, drop, currentCorr, avgCorr }
+                            });
+                        }
+                    }
+                });
+            });
+            
+            // Detect ratio deviations
+            KEY_RATIOS.forEach(ratio => {
+                const ratioData = RATIO_DATA[ratio.name];
+                if(!ratioData) return;
+                
+                ratioData.data.forEach(d => {
+                    if(d.date < twoYearsAgo) return;
+                    
+                    const zscore = (d.value - ratioData.stats.mean) / ratioData.stats.stdDev;
+                    
+                    if(Math.abs(zscore) > 2) {
+                        ANOMALY_DATA.push({
+                            date: d.date,
+                            type: 'Ratio Deviation',
+                            description: `${ratio.name} ratio at ${d.value.toFixed(3)} (${zscore.toFixed(1)}σ from mean)`,
+                            severity: Math.min(Math.abs(zscore) / 4, 1),
+                            details: { ratio: ratio.name, value: d.value, zscore }
+                        });
+                    }
+                });
+            });
+            
+            // Sort by date
+            ANOMALY_DATA.sort((a,b) => b.date - a.date);
+        }
+
+        // ========== UI FUNCTIONS ==========
+        function switchTab(tabName) {
+            ACTIVE_TAB = tabName;
+            
+            // Update tab buttons
+            ['overview', 'correlation', 'ratios', 'anomalies'].forEach(tab => {
+                const btn = document.getElementById(`tab-${tab}`);
+                const content = document.getElementById(`content-${tab}`);
+                
+                if(tab === tabName) {
+                    btn.className = 'whitespace-nowrap px-4 py-2 rounded-lg font-medium transition text-sm bg-blue-600 text-white shadow-lg';
+                    content.classList.remove('hidden');
+                } else {
+                    btn.className = 'whitespace-nowrap px-4 py-2 rounded-lg font-medium transition text-sm bg-gray-700 text-gray-300 hover:bg-gray-600';
+                    content.classList.add('hidden');
+                }
+            });
+            
+            // Render content for new tab
+            if(tabName === 'correlation') renderCorrelationTab();
+            if(tabName === 'ratios') renderRatiosTab();
+            if(tabName === 'anomalies') renderAnomaliesTab();
+        }
+
+        function generateTabs(availableRegions) {
+            const container = document.getElementById('region-tabs');
+            container.innerHTML = '';
+            availableRegions.forEach(r => {
+                const btn = document.createElement('button');
+                btn.className = `whitespace-nowrap px-4 py-2 rounded-lg font-medium transition text-sm ${r === ACTIVE_REGION ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/40' : 'bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white'}`;
+                btn.innerText = r;
+                btn.onclick = () => {
+                    ACTIVE_REGION = r;
+                    updateDashboard();
+                    Array.from(container.children).forEach(c => {
+                        c.className = c.innerText === r 
+                            ? 'whitespace-nowrap px-4 py-2 rounded-lg font-medium transition text-sm bg-blue-600 text-white shadow-lg shadow-blue-900/40'
+                            : 'whitespace-nowrap px-4 py-2 rounded-lg font-medium transition text-sm bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white';
+                    });
+                };
+                container.appendChild(btn);
+            });
+        }
+
+        function updateDashboard() {
+            if(!GLOBAL_DATA) return;
+            const rKey = ACTIVE_REGION;
+            const currentData = GLOBAL_DATA[GLOBAL_DATA.length - 1];
+            
+            // KPIs
+            const storage = currentData.regions[rKey];
+            const flow = currentData[`${rKey}_flow`];
+            const diffAvg = currentData[`${rKey}_diff_avg`];
+            const capacity = REGION_CAPACITY[rKey] || 0;
+
+            document.getElementById('kpi-storage').innerText = Math.round(storage).toLocaleString();
+            document.getElementById('kpi-storage-badge').innerText = moment(currentData.date).format('MMM DD');
+            
+            const flowEl = document.getElementById('kpi-flow');
+            flowEl.innerText = (flow > 0 ? '+' : '') + Math.round(flow);
+            flowEl.className = `text-3xl font-bold mt-1 ${flow > 0 ? 'text-blue-400' : 'text-orange-400'}`;
+            document.getElementById('kpi-flow-desc').innerText = flow > 0 ? 'Net Injection' : 'Net Withdrawal';
+
+            const diffEl = document.getElementById('kpi-diff-avg');
+            diffEl.innerText = (diffAvg > 0 ? '+' : '') + Math.round(diffAvg);
+            diffEl.className = `text-3xl font-bold mt-1 ${diffAvg > 0 ? 'text-green-400' : 'text-red-400'}`;
+            
+            if(capacity > 0) {
+                const pct = (storage / capacity) * 100;
+                document.getElementById('kpi-capacity').innerText = pct.toFixed(1) + '%';
+                document.getElementById('kpi-cap-total').innerText = capacity.toLocaleString();
+            }
+
+            renderStorageChart(rKey);
+            renderFlowChart(rKey);
+        }
+
+        function renderStorageChart(region) {
+            const oneYearAgo = new Date(GLOBAL_DATA[GLOBAL_DATA.length-1].date);
+            oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+            const data = GLOBAL_DATA.filter(d => d.date >= oneYearAgo);
+            
+            const dates = data.map(d => d.date);
+            const storage = data.map(d => d.regions[region]);
+            const avg5yr = data.map(d => d[`${region}_5yr_avg`]);
+            
+            Plotly.newPlot('chart-storage', [
+                { x: dates, y: storage, name: 'Current', line: { color: COLORS.blue, width: 3 }, type: 'scatter', fill: 'tozeroy', fillcolor: 'rgba(59, 130, 246, 0.1)' },
+                { x: dates, y: avg5yr, name: '5Y Avg', line: { color: COLORS.orange, width: 2, dash: 'dash' }, type: 'scatter' }
+            ], {
+                paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', font: { color: '#9ca3af' },
+                xaxis: { gridcolor: COLORS.grid },
+                yaxis: { gridcolor: COLORS.grid, title: 'BCF' }, margin: { t: 10, l: 50, r: 10, b: 40 }, legend: { orientation: 'h', y: 1.1 }
+            }, {responsive: true, displayModeBar: false});
+        }
+
+        function renderFlowChart(region) {
+            const oneYearAgo = new Date(GLOBAL_DATA[GLOBAL_DATA.length-1].date);
+            oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+            const data = GLOBAL_DATA.filter(d => d.date >= oneYearAgo);
+            
+            const flows = data.map(d => d[`${region}_flow`]);
+            Plotly.newPlot('chart-flow', [{
+                x: data.map(d => d.date), y: flows, type: 'bar', marker: { color: flows.map(v => v >= 0 ? COLORS.blue : COLORS.orange) }
+            }], {
+                paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', font: { color: '#9ca3af' },
+                xaxis: { gridcolor: COLORS.grid }, yaxis: { gridcolor: COLORS.grid, title: 'BCF' }, margin: { t: 10, l: 50, r: 10, b: 40 }
+            }, {responsive: true, displayModeBar: false});
+        }
+
+        // ========== CORRELATION TAB RENDERING ==========
+        function populateCorrelationPairSelector() {
+            const selector = document.getElementById('correlation-pair-selector');
+            selector.innerHTML = '';
+            
+            const regions = AVAILABLE_REGIONS.filter(r => r !== 'Total Lower 48' && r !== 'South Central');
+            for(let i = 0; i < regions.length; i++) {
+                for(let j = i + 1; j < regions.length; j++) {
+                    const opt = document.createElement('option');
+                    opt.value = `${regions[i]}|${regions[j]}`;
+                    opt.innerText = `${regions[i]} vs ${regions[j]}`;
+                    selector.appendChild(opt);
+                }
+            }
+            
+            selector.addEventListener('change', () => renderCorrelationTimeChart());
+        }
+
+        function renderCorrelationTab() {
+            renderCorrelationHeatmap();
+            renderCorrelationTimeChart();
+            renderCorrelationRankings();
+        }
+
+        function renderCorrelationHeatmap() {
+            const container = document.getElementById('correlation-heatmap');
+            const regions = AVAILABLE_REGIONS.filter(r => r !== 'Total Lower 48' && r !== 'South Central');
+            
+            let html = '<table class="w-full text-xs"><thead><tr><th class="p-2"></th>';
+            regions.forEach(r => {
+                html += `<th class="p-2 text-gray-400">${r}</th>`;
+            });
+            html += '</tr></thead><tbody>';
+            
+            regions.forEach((r1, i) => {
+                html += `<tr><td class="p-2 text-gray-400 font-medium">${r1}</td>`;
+                regions.forEach((r2, j) => {
+                    if(i === j) {
+                        html += '<td class="p-2 text-center bg-gray-800">1.00</td>';
+                    } else if(i > j) {
+                        const key = `${r2}|${r1}`;
+                        const corr = CORRELATION_DATA.current[key] || 0;
+                        const color = getCorrelationColor(corr);
+                        html += `<td class="p-2 text-center correlation-cell" style="background-color: ${color}">${corr.toFixed(2)}</td>`;
+                    } else {
+                        const key = `${r1}|${r2}`;
+                        const corr = CORRELATION_DATA.current[key] || 0;
+                        const color = getCorrelationColor(corr);
+                        html += `<td class="p-2 text-center correlation-cell" style="background-color: ${color}">${corr.toFixed(2)}</td>`;
+                    }
+                });
+                html += '</tr>';
+            });
+            html += '</tbody></table>';
+            
+            container.innerHTML = html;
+        }
+
+        function getCorrelationColor(corr) {
+            // Green for high correlation, red for low
+            if(corr >= 0.9) return 'rgba(34, 197, 94, 0.3)';
+            if(corr >= 0.7) return 'rgba(34, 197, 94, 0.2)';
+            if(corr >= 0.5) return 'rgba(234, 179, 8, 0.2)';
+            if(corr >= 0.3) return 'rgba(249, 115, 22, 0.2)';
+            return 'rgba(239, 68, 68, 0.3)';
+        }
+
+        function renderCorrelationTimeChart() {
+            const selector = document.getElementById('correlation-pair-selector');
+            const key = selector.value;
+            if(!key) return;
+            
+            const dates = CORRELATION_DATA.rolling.map(d => d.date);
+            const values = CORRELATION_DATA.rolling.map(d => d.correlations[key] || null);
+            
+            // Calculate rolling average
+            const avgWindow = 26;
+            const rollingAvg = values.map((v, i) => {
+                if(i < avgWindow) return null;
+                const slice = values.slice(i - avgWindow, i).filter(x => x != null);
+                return slice.length > 0 ? slice.reduce((a,b) => a+b, 0) / slice.length : null;
+            });
+            
+            Plotly.newPlot('chart-correlation-time', [
+                { x: dates, y: values, name: 'Correlation', line: { color: COLORS.purple, width: 2 }, type: 'scatter' },
+                { x: dates, y: rollingAvg, name: '26-Week Avg', line: { color: COLORS.orange, width: 2, dash: 'dash' }, type: 'scatter' }
+            ], {
+                paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', font: { color: '#9ca3af' },
+                xaxis: { gridcolor: COLORS.grid },
+                yaxis: { gridcolor: COLORS.grid, title: 'Correlation', range: [-0.1, 1.1] }, 
+                margin: { t: 10, l: 50, r: 10, b: 40 }, 
+                legend: { orientation: 'h', y: 1.1 }
+            }, {responsive: true, displayModeBar: false});
+        }
+
+        function renderCorrelationRankings() {
+            const container = document.getElementById('correlation-rankings');
+            
+            const pairs = Object.entries(CORRELATION_DATA.current)
+                .map(([key, corr]) => {
+                    const [r1, r2] = key.split('|');
+                    return { r1, r2, corr };
+                })
+                .sort((a, b) => b.corr - a.corr);
+            
+            const strongest = pairs.slice(0, 5);
+            const weakest = pairs.slice(-5).reverse();
+            
+            let html = '<div><h4 class="text-sm font-bold text-green-400 mb-2"><i class="fa-solid fa-arrow-up mr-1"></i> Strongest Correlations</h4><div class="space-y-1">';
+            strongest.forEach(p => {
+                html += `<div class="bg-gray-800 p-2 rounded text-xs flex justify-between">
+                    <span>${p.r1} vs ${p.r2}</span>
+                    <span class="font-bold text-green-400">${p.corr.toFixed(3)}</span>
+                </div>`;
+            });
+            html += '</div></div>';
+            
+            html += '<div><h4 class="text-sm font-bold text-red-400 mb-2"><i class="fa-solid fa-arrow-down mr-1"></i> Weakest Correlations</h4><div class="space-y-1">';
+            weakest.forEach(p => {
+                html += `<div class="bg-gray-800 p-2 rounded text-xs flex justify-between">
+                    <span>${p.r1} vs ${p.r2}</span>
+                    <span class="font-bold text-red-400">${p.corr.toFixed(3)}</span>
+                </div>`;
+            });
+            html += '</div></div>';
+            
+            container.innerHTML = html;
+        }
+
+        // ========== RATIOS TAB RENDERING ==========
+        function populateRatioSelector() {
+            const selector = document.getElementById('ratio-selector');
+            selector.innerHTML = '';
+            
+            KEY_RATIOS.forEach(ratio => {
+                const opt = document.createElement('option');
+                opt.value = ratio.name;
+                opt.innerText = ratio.name;
+                selector.appendChild(opt);
+            });
+            
+            selector.addEventListener('change', () => renderRatiosTab());
+        }
+
+        function renderRatiosTab() {
+            const ratioName = document.getElementById('ratio-selector').value;
+            if(!ratioName || !RATIO_DATA[ratioName]) return;
+            
+            const ratioData = RATIO_DATA[ratioName];
+            
+            // Filter to last 3 years
+            const threeYearsAgo = new Date(GLOBAL_DATA[GLOBAL_DATA.length-1].date);
+            threeYearsAgo.setFullYear(threeYearsAgo.getFullYear() - 3);
+            const filtered = ratioData.data.filter(d => d.date >= threeYearsAgo);
+            
+            const dates = filtered.map(d => d.date);
+            const values = filtered.map(d => d.value);
+            const mean = Array(dates.length).fill(ratioData.stats.mean);
+            const upper1 = Array(dates.length).fill(ratioData.stats.upperBand1);
+            const lower1 = Array(dates.length).fill(ratioData.stats.lowerBand1);
+            const upper2 = Array(dates.length).fill(ratioData.stats.upperBand2);
+            const lower2 = Array(dates.length).fill(ratioData.stats.lowerBand2);
+            
+            Plotly.newPlot('chart-ratios', [
+                { x: dates, y: upper2, fill: 'tonexty', fillcolor: 'rgba(239, 68, 68, 0.1)', line: { color: 'rgba(239, 68, 68, 0.3)', width: 1, dash: 'dot' }, name: '+2σ', type: 'scatter' },
+                { x: dates, y: upper1, fill: 'tonexty', fillcolor: 'rgba(249, 115, 22, 0.1)', line: { color: 'rgba(249, 115, 22, 0.4)', width: 1, dash: 'dash' }, name: '+1σ', type: 'scatter' },
+                { x: dates, y: mean, line: { color: COLORS.orange, width: 2 }, name: 'Mean', type: 'scatter' },
+                { x: dates, y: lower1, fill: 'tonexty', fillcolor: 'rgba(249, 115, 22, 0.1)', line: { color: 'rgba(249, 115, 22, 0.4)', width: 1, dash: 'dash' }, name: '-1σ', type: 'scatter' },
+                { x: dates, y: lower2, fill: 'tonexty', fillcolor: 'rgba(239, 68, 68, 0.1)', line: { color: 'rgba(239, 68, 68, 0.3)', width: 1, dash: 'dot' }, name: '-2σ', type: 'scatter' },
+                { x: dates, y: values, line: { color: COLORS.blue, width: 3 }, name: 'Ratio', type: 'scatter' }
+            ], {
+                paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', font: { color: '#9ca3af' },
+                xaxis: { gridcolor: COLORS.grid },
+                yaxis: { gridcolor: COLORS.grid, title: 'Ratio Value' }, 
+                margin: { t: 10, l: 50, r: 10, b: 40 }, 
+                legend: { orientation: 'h', y: 1.15 }
+            }, {responsive: true, displayModeBar: false});
+            
+            // Update KPI cards
+            const currentValue = values[values.length - 1];
+            const zscore = (currentValue - ratioData.stats.mean) / ratioData.stats.stdDev;
+            
+            document.getElementById('ratio-current').innerText = currentValue.toFixed(3);
+            document.getElementById('ratio-current-desc').innerText = `As of ${moment(dates[dates.length-1]).format('MMM DD, YYYY')}`;
+            
+            document.getElementById('ratio-mean').innerText = ratioData.stats.mean.toFixed(3);
+            
+            const zscoreEl = document.getElementById('ratio-zscore');
+            zscoreEl.innerText = (zscore > 0 ? '+' : '') + zscore.toFixed(2) + 'σ';
+            zscoreEl.className = `text-2xl font-bold ${Math.abs(zscore) > 2 ? 'text-red-400' : Math.abs(zscore) > 1 ? 'text-orange-400' : 'text-green-400'}`;
+            
+            const zscoreDesc = document.getElementById('ratio-zscore-desc');
+            if(Math.abs(zscore) > 2) {
+                zscoreDesc.innerText = 'ANOMALY: High deviation';
+                zscoreDesc.className = 'mt-2 text-xs text-red-400 font-bold';
+            } else if(Math.abs(zscore) > 1) {
+                zscoreDesc.innerText = 'Elevated deviation';
+                zscoreDesc.className = 'mt-2 text-xs text-orange-400';
+            } else {
+                zscoreDesc.innerText = 'Within normal range';
+                zscoreDesc.className = 'mt-2 text-xs text-green-400';
+            }
+        }
+
+        // ========== ANOMALIES TAB RENDERING ==========
+        function renderAnomaliesTab() {
+            // Summary KPIs
+            const total = ANOMALY_DATA.length;
+            const correlationCount = ANOMALY_DATA.filter(a => a.type === 'Correlation Drop').length;
+            const ratioCount = ANOMALY_DATA.filter(a => a.type === 'Ratio Deviation').length;
+            
+            document.getElementById('anomaly-total').innerText = total;
+            document.getElementById('anomaly-correlation').innerText = correlationCount;
+            document.getElementById('anomaly-ratio').innerText = ratioCount;
+            
+            // Table
+            const tbody = document.getElementById('anomaly-table-body');
+            tbody.innerHTML = '';
+            
+            ANOMALY_DATA.slice(0, 20).forEach(anomaly => {
+                const tr = document.createElement('tr');
+                tr.className = 'border-b border-gray-700 hover:bg-gray-800 transition';
+                
+                const severityColor = anomaly.severity > 0.7 ? 'text-red-400' : anomaly.severity > 0.4 ? 'text-orange-400' : 'text-yellow-400';
+                const typeIcon = anomaly.type === 'Correlation Drop' ? 'fa-link-slash' : 'fa-chart-simple';
+                const typeBg = anomaly.type === 'Correlation Drop' ? 'bg-purple-900 text-purple-300' : 'bg-orange-900 text-orange-300';
+                
+                tr.innerHTML = `
+                    <td class="px-4 py-3 text-sm">${moment(anomaly.date).format('MMM DD, YYYY')}</td>
+                    <td class="px-4 py-3"><span class="text-xs px-2 py-1 rounded ${typeBg}"><i class="fa-solid ${typeIcon} mr-1"></i>${anomaly.type}</span></td>
+                    <td class="px-4 py-3 text-sm">${anomaly.description}</td>
+                    <td class="px-4 py-3 text-right text-sm ${severityColor} font-bold">${(anomaly.severity * 100).toFixed(0)}%</td>
+                    <td class="px-4 py-3 text-center"><button class="text-xs bg-gray-700 hover:bg-gray-600 px-2 py-1 rounded" onclick="alert('Feature: Jump to date in charts')"><i class="fa-solid fa-magnifying-glass mr-1"></i>View</button></td>
+                `;
+                tbody.appendChild(tr);
+            });
+            
+            // Timeline chart
+            renderAnomalyTimeline();
+        }
+
+        function renderAnomalyTimeline() {
+            // Create scatter plot with anomalies
+            const oneYearAgo = new Date(GLOBAL_DATA[GLOBAL_DATA.length-1].date);
+            oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+            
+            const storageData = GLOBAL_DATA.filter(d => d.date >= oneYearAgo);
+            const storageDates = storageData.map(d => d.date);
+            const storageValues = storageData.map(d => d.regions['Total Lower 48']);
+            
+            const anomalyDates = ANOMALY_DATA.filter(a => a.date >= oneYearAgo).map(a => a.date);
+            const anomalyValues = anomalyDates.map(date => {
+                const match = GLOBAL_DATA.find(d => d.date.getTime() === date.getTime());
+                return match ? match.regions['Total Lower 48'] : null;
+            });
+            
+            Plotly.newPlot('chart-anomaly-timeline', [
+                { 
+                    x: storageDates, 
+                    y: storageValues, 
+                    name: 'Total Storage', 
+                    line: { color: COLORS.blue, width: 2 }, 
+                    type: 'scatter' 
+                },
+                { 
+                    x: anomalyDates, 
+                    y: anomalyValues, 
+                    name: 'Anomaly Events', 
+                    mode: 'markers',
+                    marker: { 
+                        color: COLORS.red, 
+                        size: 10,
+                        symbol: 'triangle-up',
+                        line: { color: 'white', width: 1 }
+                    }, 
+                    type: 'scatter',
+                    hovertemplate: 'Anomaly detected<extra></extra>'
+                }
+            ], {
+                paper_bgcolor: 'rgba(0,0,0,0)', 
+                plot_bgcolor: 'rgba(0,0,0,0)', 
+                font: { color: '#9ca3af' },
+                xaxis: { gridcolor: COLORS.grid },
+                yaxis: { gridcolor: COLORS.grid, title: 'Storage (BCF)' }, 
+                margin: { t: 10, l: 50, r: 10, b: 40 }, 
+                legend: { orientation: 'h', y: 1.1 }
+            }, {responsive: true, displayModeBar: false});
+        }
+
+        function getWeekNumber(d) {
+            d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+            d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay()||7));
+            var yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
+            return Math.ceil((((d - yearStart) / 86400000) + 1)/7);
+        }
+    </script>
+</body>
+</html>

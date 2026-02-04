@@ -1,0 +1,270 @@
+================================================================================
+NATURAL GAS STORAGE REGIONAL CORRELATION ANALYSIS REPORT
+================================================================================
+
+Analysis Date: 2026-02-04 17:46:17
+Data Period: 2010-01-01 00:00:00 to 2026-01-23 00:00:00
+Regions Analyzed: 8
+Total Observations: 839
+Methodology: EXPANDING WINDOW (no look-ahead bias)
+  - Z-scores calculated using only data available up to each observation
+  - Minimum 52 weeks of history required before flagging events
+
+--------------------------------------------------------------------------------
+1. REGIONAL CORRELATION SUMMARY
+--------------------------------------------------------------------------------
+
+Total Lower 48_vs_East:
+  Mean Correlation: 0.989
+  Std Dev: 0.013
+  Range: [0.926, 1.000]
+  Stability: High
+
+Total Lower 48_vs_Midwest:
+  Mean Correlation: 0.987
+  Std Dev: 0.016
+  Range: [0.903, 1.000]
+  Stability: High
+
+Total Lower 48_vs_Mountain:
+  Mean Correlation: 0.975
+  Std Dev: 0.036
+  Range: [0.721, 0.999]
+  Stability: High
+
+Total Lower 48_vs_Pacific:
+  Mean Correlation: 0.879
+  Std Dev: 0.183
+  Range: [-0.383, 0.999]
+  Stability: Medium
+
+Total Lower 48_vs_South Central:
+  Mean Correlation: 0.907
+  Std Dev: 0.123
+  Range: [0.010, 0.999]
+  Stability: Medium
+
+Total Lower 48_vs_Salt:
+  Mean Correlation: 0.565
+  Std Dev: 0.407
+  Range: [-0.773, 0.993]
+  Stability: Low
+
+Total Lower 48_vs_Non Salt:
+  Mean Correlation: 0.968
+  Std Dev: 0.041
+  Range: [0.772, 0.999]
+  Stability: High
+
+East_vs_Midwest:
+  Mean Correlation: 0.993
+  Std Dev: 0.009
+  Range: [0.945, 1.000]
+  Stability: High
+
+East_vs_Mountain:
+  Mean Correlation: 0.969
+  Std Dev: 0.047
+  Range: [0.572, 0.999]
+  Stability: High
+
+East_vs_Pacific:
+  Mean Correlation: 0.846
+  Std Dev: 0.198
+  Range: [-0.360, 0.996]
+  Stability: Medium
+
+East_vs_South Central:
+  Mean Correlation: 0.846
+  Std Dev: 0.164
+  Range: [-0.125, 0.998]
+  Stability: Medium
+
+East_vs_Salt:
+  Mean Correlation: 0.478
+  Std Dev: 0.432
+  Range: [-0.851, 0.990]
+  Stability: Low
+
+East_vs_Non Salt:
+  Mean Correlation: 0.930
+  Std Dev: 0.081
+  Range: [0.553, 1.000]
+  Stability: High
+
+Midwest_vs_Mountain:
+  Mean Correlation: 0.966
+  Std Dev: 0.056
+  Range: [0.542, 1.000]
+  Stability: High
+
+Midwest_vs_Pacific:
+  Mean Correlation: 0.828
+  Std Dev: 0.208
+  Range: [-0.373, 0.997]
+  Stability: Low
+
+Midwest_vs_South Central:
+  Mean Correlation: 0.846
+  Std Dev: 0.163
+  Range: [-0.122, 0.998]
+  Stability: Medium
+
+Midwest_vs_Salt:
+  Mean Correlation: 0.481
+  Std Dev: 0.430
+  Range: [-0.852, 0.991]
+  Stability: Low
+
+Midwest_vs_Non Salt:
+  Mean Correlation: 0.924
+  Std Dev: 0.089
+  Range: [0.490, 0.998]
+  Stability: High
+
+Mountain_vs_Pacific:
+  Mean Correlation: 0.889
+  Std Dev: 0.170
+  Range: [-0.236, 0.998]
+  Stability: Medium
+
+Mountain_vs_South Central:
+  Mean Correlation: 0.854
+  Std Dev: 0.164
+  Range: [-0.052, 0.998]
+  Stability: Medium
+
+Mountain_vs_Salt:
+  Mean Correlation: 0.473
+  Std Dev: 0.436
+  Range: [-0.804, 0.990]
+  Stability: Low
+
+Mountain_vs_Non Salt:
+  Mean Correlation: 0.943
+  Std Dev: 0.069
+  Range: [0.538, 0.999]
+  Stability: High
+
+Pacific_vs_South Central:
+  Mean Correlation: 0.842
+  Std Dev: 0.217
+  Range: [-0.515, 0.999]
+  Stability: Low
+
+Pacific_vs_Salt:
+  Mean Correlation: 0.537
+  Std Dev: 0.424
+  Range: [-0.610, 0.990]
+  Stability: Low
+
+Pacific_vs_Non Salt:
+  Mean Correlation: 0.895
+  Std Dev: 0.185
+  Range: [-0.441, 0.998]
+  Stability: Medium
+
+South Central_vs_Salt:
+  Mean Correlation: 0.802
+  Std Dev: 0.240
+  Range: [-0.321, 0.996]
+  Stability: Low
+
+South Central_vs_Non Salt:
+  Mean Correlation: 0.961
+  Std Dev: 0.064
+  Range: [0.465, 0.999]
+  Stability: High
+
+Salt_vs_Non Salt:
+  Mean Correlation: 0.644
+  Std Dev: 0.373
+  Range: [-0.664, 0.993]
+  Stability: Low
+
+--------------------------------------------------------------------------------
+2. REGIONAL RATIO ANALYSIS
+--------------------------------------------------------------------------------
+
+East/Midwest:
+  Mean Ratio: 0.868
+  Std Dev: 0.081
+  Coefficient of Variation: 9.34%
+  Interpretation: Stable relationship
+
+Salt/Non Salt:
+  Mean Ratio: 0.358
+  Std Dev: 0.081
+  Coefficient of Variation: 22.50%
+  Interpretation: Highly variable
+
+East/Total Lower 48:
+  Mean Ratio: 0.221
+  Std Dev: 0.026
+  Coefficient of Variation: 11.78%
+  Interpretation: Variable relationship
+
+South Central/Total Lower 48:
+  Mean Ratio: 0.364
+  Std Dev: 0.044
+  Coefficient of Variation: 12.05%
+  Interpretation: Variable relationship
+
+--------------------------------------------------------------------------------
+3. DEVIATION EVENTS DETECTED
+--------------------------------------------------------------------------------
+
+Total Events: 1925
+Correlation Breaks: 1712
+Ratio Deviations: 213
+
+Most Significant Events (by Z-Score):
+
+  2014-03-14: East/Midwest
+    Type: Ratio Deviation, Z-Score: 4.54
+
+  2014-04-04: East/Midwest
+    Type: Ratio Deviation, Z-Score: 4.52
+
+  2014-03-07: East/Midwest
+    Type: Ratio Deviation, Z-Score: 4.48
+
+  2014-04-18: East/Midwest
+    Type: Ratio Deviation, Z-Score: 4.46
+
+  2014-02-28: East/Midwest
+    Type: Ratio Deviation, Z-Score: 4.40
+
+  2014-03-21: East/Midwest
+    Type: Ratio Deviation, Z-Score: 4.39
+
+  2014-03-28: East/Midwest
+    Type: Ratio Deviation, Z-Score: 4.14
+
+  2014-04-11: East/Midwest
+    Type: Ratio Deviation, Z-Score: 4.06
+
+  2014-04-25: East/Midwest
+    Type: Ratio Deviation, Z-Score: 3.95
+
+  2014-02-21: East/Midwest
+    Type: Ratio Deviation, Z-Score: 3.70
+
+--------------------------------------------------------------------------------
+4. PRICE IMPACT ANALYSIS
+--------------------------------------------------------------------------------
+
+Events with Price Data: 1925
+Average Price Change: 8.33%
+Median Price Change: 10.30%
+Average Volatility: $1.51
+
+Positive Price Movements: 1717 (89.2%)
+Negative Price Movements: 208 (10.8%)
+
+Correlation (|Z-Score| vs |Price Change%|): 0.268
+Interpretation: Weak relationship
+
+================================================================================
+END OF REPORT
+================================================================================
