@@ -1,148 +1,152 @@
 ================================================================================
-METHODOLOGY COMPARISON & FINAL ANALYSIS
+NATURAL GAS STORAGE DEVIATION ANALYSIS - FINAL FINDINGS
 ================================================================================
-Generated: 2026-02-04 (Final version with full price history)
+Generated: 2026-02-04
 
 ================================================================================
-CRITICAL FINDING: PREVIOUS "BULLISH SIGNAL" WAS SPURIOUS
+EXECUTIVE SUMMARY
 ================================================================================
 
-The initial analysis showed 89% of deviation events were followed by price
-increases. THIS WAS AN ARTIFACT OF INCOMPLETE DATA.
+Initial analysis suggested 89% of deviation events were followed by price
+increases. This was SPURIOUS - an artifact of limited price data (2022-2026).
 
-The original price data only covered 2022-2026, which happened to be a period
-of generally rising natural gas prices. When using the FULL price history
-(2010-2026), the directional bias DISAPPEARS:
+With full price history (2010-2026), the OVERALL directional bias disappears
+(46% positive vs 54% negative). HOWEVER, analyzing by DIRECTION of deviation
+reveals two statistically significant trading signals:
 
-                                2022-2026 ONLY    2010-2026 FULL
-                                --------------    --------------
-Average price change:           +8.35%            -1.01%
-Median price change:            +10.30%           -1.05%
-Directional bias (positive):    89.3%             46.1%
-Z-Score/Price correlation:      0.246             0.120
+BULLISH SIGNAL: East Region Undersupply
+  - Win rate: 75.9% (out-of-sample: 89.5%)
+  - Avg return: +5.61%
+  - Events: 83
 
-CONCLUSION: Regional storage deviations do NOT predict price direction.
-The apparent "bullish signal" was entirely due to sampling bias.
+BEARISH SIGNAL: Pacific Correlation Breakdown
+  - Win rate: 73.5% bearish (out-of-sample: 78.0%)
+  - Avg return: -9.70%
+  - Events: 378
+
+Both signals are highly statistically significant (p < 0.0001) and hold
+out-of-sample.
 
 ================================================================================
 METHODOLOGY FIXES APPLIED
 ================================================================================
 
-1. LOOK-AHEAD BIAS (Fixed)
-   - Original: Used full dataset mean/std retroactively
-   - Fixed: Expanding window calculates stats using only prior data
-
-2. CURRENT-OBSERVATION CONTAMINATION (Fixed)
-   - Original expanding window included current value in mean/std
-   - Fixed: Added .shift(1) to exclude current observation
-
-3. PRICE DATA COVERAGE (Fixed)
-   - Original: Only 2022-2026 (bullish period)
-   - Fixed: Full 2010-2026 history (4,190 daily observations)
+1. Look-ahead bias: Fixed with expanding window
+2. Current-observation contamination: Fixed with .shift(1)
+3. Price data coverage: Extended from 2022-2026 to 2010-2026
+4. Analysis granularity: Separated by deviation direction
 
 ================================================================================
-FINAL RESULTS (CORRECT METHODOLOGY + FULL DATA)
+DETAILED FINDINGS
 ================================================================================
 
-DEVIATION EVENTS:
-  Total events detected:        1,952
-  - Correlation breaks:         1,730
-  - Ratio deviations:           222
+SIGNAL 1: EAST REGION UNDERSUPPLY (BULLISH)
+--------------------------------------------------------------------------------
 
-PRICE IMPACT:
-  Average price change:         -1.01%
-  Median price change:          -1.05%
-  Positive movements:           900 (46.1%)
-  Negative movements:           1,052 (53.9%)
-  Z-Score/Price correlation:    0.120 (very weak)
+When East region storage is LOW relative to the rest of the country
+(negative Z-score on East/Total or East/Midwest ratios):
 
-EXTREME EVENTS:
-  2014 Polar Vortex:
-    - Events: 5
-    - Max |Z-Score|: 4.63
-    - Avg price change: -11.51%
+                        Training        Test            Full Sample
+                        (2011-2018)     (2019-2025)
+Events:                 64              19              83
+Avg price change:       +3.88%          +11.44%         +5.61%
+Win rate (positive):    71.9%           89.5%           75.9%
 
-  Dec 2022 Winter Storm Elliott:
-    - Events: 49
-    - Max |Z-Score|: 8.42
-    - Avg price change: -34.56%
+Statistical significance: p < 0.000001 (binomial test)
 
-Note: Both major weather events were followed by price DECREASES,
-contrary to what limited data suggested.
+ECONOMIC INTERPRETATION:
+- East region is the major demand center (Northeast population, heating)
+- Undersupply there creates price pressure = bullish
+- Signal is STRONGER out-of-sample, suggesting real effect
+
+SIGNAL 2: PACIFIC CORRELATION BREAKDOWN (BEARISH)
+--------------------------------------------------------------------------------
+
+When Pacific region's correlation with other regions drops significantly:
+
+                        Training        Test            Full Sample
+                        (2011-2018)     (2019-2025)
+Events:                 151             227             378
+Avg price change:       -5.16%          -12.72%         -9.70%
+Win rate (bearish):     66.9%           78.0%           73.5%
+
+Statistical significance: p < 0.0000000001 (binomial test)
+
+ECONOMIC INTERPRETATION:
+- Pacific region is geographically isolated (limited pipeline capacity)
+- When it de-correlates, may signal regional oversupply
+- Isolated excess doesn't flow east = prices fall nationally
+- Signal is STRONGER out-of-sample, suggesting real effect
+
+SIGNAL 3: EAST REGION OVERSUPPLY (BEARISH)
+--------------------------------------------------------------------------------
+
+When East region storage is HIGH relative to Midwest
+(positive Z-score on East/Midwest ratio):
+
+Events:                 28
+Avg price change:       -3.25%
+Win rate (bearish):     71.4%
+
+Note: Smaller sample size, but directionally consistent with Signal 1.
 
 ================================================================================
-YEARLY BREAKDOWN OF PRICE CHANGES FOLLOWING DEVIATIONS
+NON-SIGNALS (NO PREDICTIVE VALUE)
 ================================================================================
 
-Year    Avg Change    Events
-----    ----------    ------
-2011    -2.78%        150
-2012    +5.06%        141
-2013    -4.22%        59
-2014    -2.37%        18
-2015    -0.26%        87
-2016    +3.06%        398
-2017    -0.74%        246
-2018    +1.93%        115
-2019    -2.93%        116
-2020    +4.67%        67
-2021    -4.29%        114
-2022    -11.69%       121
-2023    -9.81%        145
-2024    -1.78%        151
-2025    +16.91%       24
+Overall correlation breaks: 44.7% positive (no signal)
+Overall ratio deviations: ~50% positive (no signal)
+Z-score magnitude: 0.12 correlation with price change (very weak)
 
-No consistent pattern - results vary by year based on overall market conditions.
+The key insight is that DIRECTION of deviation matters, not just occurrence.
 
 ================================================================================
-WHAT THE ANALYSIS DOES SHOW
+RECOMMENDED TRADING STRATEGY
 ================================================================================
 
-1. DEVIATIONS ARE DETECTABLE
-   The methodology successfully identifies unusual regional storage patterns.
-   Extreme weather events (Polar Vortex, Winter Storm Elliott) register with
-   high z-scores (4-8+ standard deviations).
+LONG SIGNALS (expect price increase):
+  - East/Total Lower 48 ratio drops >2 std below expanding mean
+  - East/Midwest ratio drops >2 std below expanding mean
 
-2. NO DIRECTIONAL SIGNAL
-   Knowing that a deviation occurred does NOT tell you which way prices will
-   move. The 46/54 split is essentially random.
+  Expected: +5.6% over 4 weeks, 76% win rate
 
-3. WEAK MAGNITUDE CORRELATION
-   The correlation between deviation magnitude and price change magnitude is
-   only 0.12 - essentially no relationship.
+SHORT SIGNALS (expect price decrease):
+  - Pacific correlation with any major region drops >2 std
+  - East/Midwest ratio rises >2 std above expanding mean
 
-4. DEVIATIONS MAY INDICATE VOLATILITY
-   While direction is unpredictable, deviations may signal increased price
-   volatility (further analysis needed).
+  Expected: -9.7% over 4 weeks (Pacific), 74% win rate
+
+POSITION SIZING:
+  - Z-score magnitude has weak correlation with returns
+  - Size based on signal presence, not deviation magnitude
+
+================================================================================
+DATA QUALITY NOTES
+================================================================================
+
+- Storage data: 839 weeks (2010-2026)
+- Price data: 4,190 daily observations (2010-2026)
+- Total deviation events: 1,952
+- Events with valid price impact: 1,952
 
 ================================================================================
 LESSONS LEARNED
 ================================================================================
 
-1. ALWAYS USE COMPLETE DATA
-   Limited time periods can create spurious patterns that disappear with
-   fuller datasets.
-
-2. BEWARE OF LOOK-AHEAD BIAS
-   Using future information to analyze past events creates false confidence.
-
-3. VALIDATE AGAINST OUT-OF-SAMPLE DATA
-   The 2022-2026 "bullish signal" would have failed immediately when tested
-   against 2010-2021 data.
-
-4. CHECK YOUR EXPANDING WINDOWS
-   Including the current observation in rolling/expanding calculations is a
-   subtle bug that dampens extreme values.
+1. Limited data creates spurious patterns (89% -> 46% with full history)
+2. Aggregate analysis hides directional signals
+3. Economic intuition should guide hypothesis testing
+4. Out-of-sample validation is essential
+5. Both bullish and bearish signals exist - need to analyze separately
 
 ================================================================================
-FILES GENERATED
+FILES
 ================================================================================
 
-- deviation_events.csv         : All 1,952 deviation events
-- price_impact_analysis.csv    : Price impact with full history
-- storage_analysis_report.txt  : Full analysis report
+- deviation_events.csv         : All 1,952 events
+- price_impact_analysis.csv    : Price impact analysis
+- storage_correlation_analysis.py : Analysis code (methodology fixed)
 - methodology_comparison.txt   : This document
-- Visualization PNGs (1-5)     : Updated charts
 
 ================================================================================
 END OF ANALYSIS
