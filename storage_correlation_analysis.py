@@ -338,35 +338,43 @@ class StorageCorrelationAnalyzer:
 
         return pd.DataFrame(ratio_events)
     
-    def analyze_price_impact(self, deviation_df, forward_window=4):
+    def analyze_price_impact(self, deviation_df, forward_window=4, release_delay_days=6):
         """
         Analyze price movements following deviation events
-        
+
         Parameters:
         -----------
         deviation_df : DataFrame
             DataFrame of deviation events
         forward_window : int
             Number of weeks forward to analyze price impact
+        release_delay_days : int
+            Days between storage week-ending (Friday) and data release (Thursday)
+            EIA releases storage data on Thursday for week ending previous Friday = 6 days
         """
         if self.price_data is None or len(deviation_df) == 0:
             print("No price data or no deviation events to analyze")
             return None
-        
+
         print(f"\nAnalyzing price impact (forward window: {forward_window} weeks)...")
-        
+        print(f"  Using release delay of {release_delay_days} days (Friday week-end -> Thursday release)")
+
         results = []
-        
+
         for idx, event in deviation_df.iterrows():
             event_date = event['Date']
-            
-            # Find price on event date (or closest date after)
-            price_at_event = self.price_data[self.price_data.index >= event_date]
-            if len(price_at_event) == 0:
+
+            # Storage data is for week ending Friday, released following Thursday
+            # Add release_delay_days to get the actual release date
+            release_date = event_date + timedelta(days=release_delay_days)
+
+            # Find price on or after RELEASE date (when traders can act on the info)
+            price_at_release = self.price_data[self.price_data.index >= release_date]
+            if len(price_at_release) == 0:
                 continue
-            
-            price_t0 = price_at_event.iloc[0]['Price']
-            date_t0 = price_at_event.index[0]
+
+            price_t0 = price_at_release.iloc[0]['Price']
+            date_t0 = price_at_release.index[0]
             
             # Find price N weeks forward
             future_date = date_t0 + timedelta(weeks=forward_window)
