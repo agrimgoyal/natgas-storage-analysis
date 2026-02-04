@@ -1,133 +1,149 @@
 ================================================================================
-METHODOLOGY COMPARISON: ORIGINAL vs CORRECTED EXPANDING WINDOW
+METHODOLOGY COMPARISON & FINAL ANALYSIS
 ================================================================================
-Generated: 2026-02-04 (Updated with bug fix)
-
-SUMMARY OF CHANGES
-================================================================================
-
-TWO ISSUES WERE FIXED:
-
-1. LOOK-AHEAD BIAS (Initial Fix)
-   The original methodology calculated mean and standard deviation using the
-   ENTIRE dataset (2010-2026), then applied these values retroactively.
-
-2. CURRENT-OBSERVATION CONTAMINATION (Bug Fix)
-   The initial expanding window implementation included the current observation
-   when calculating mean/std, which DAMPENS z-scores for extreme events.
-
-The CORRECTED methodology:
-  - Uses expanding window with .shift(1) to EXCLUDE current observation
-  - Mean and std calculated using ONLY data BEFORE each observation
-  - Minimum 52 weeks of history required before flagging any events
-  - Z-scores represent true out-of-sample deviations
-  - Suitable for live trading applications
+Generated: 2026-02-04 (Final version with full price history)
 
 ================================================================================
-RESULTS COMPARISON (THREE VERSIONS)
+CRITICAL FINDING: PREVIOUS "BULLISH SIGNAL" WAS SPURIOUS
 ================================================================================
 
-METRIC                          ORIGINAL    BUGGY       CORRECTED
-                                (full data) (no shift)  (with shift)
---------------------------------------------------------------------------------
-Total Deviation Events          1,439       1,925       1,952
-  - Correlation Breaks          -           1,712       1,730
-  - Ratio Deviations            -           213         222
+The initial analysis showed 89% of deviation events were followed by price
+increases. THIS WAS AN ARTIFACT OF INCOMPLETE DATA.
 
-Events with Price Data          1,439       1,925       1,952
+The original price data only covered 2022-2026, which happened to be a period
+of generally rising natural gas prices. When using the FULL price history
+(2010-2026), the directional bias DISAPPEARS:
 
-PRICE IMPACT METRICS:
-Average Price Change            7.80%       8.33%       8.35%
-Directional Bias (positive)     86.4%       89.2%       89.3%
-Z-Score/Price Correlation       0.342       0.268       0.246
+                                2022-2026 ONLY    2010-2026 FULL
+                                --------------    --------------
+Average price change:           +8.35%            -1.01%
+Median price change:            +10.30%           -1.05%
+Directional bias (positive):    89.3%             46.1%
+Z-Score/Price correlation:      0.246             0.120
+
+CONCLUSION: Regional storage deviations do NOT predict price direction.
+The apparent "bullish signal" was entirely due to sampling bias.
+
+================================================================================
+METHODOLOGY FIXES APPLIED
+================================================================================
+
+1. LOOK-AHEAD BIAS (Fixed)
+   - Original: Used full dataset mean/std retroactively
+   - Fixed: Expanding window calculates stats using only prior data
+
+2. CURRENT-OBSERVATION CONTAMINATION (Fixed)
+   - Original expanding window included current value in mean/std
+   - Fixed: Added .shift(1) to exclude current observation
+
+3. PRICE DATA COVERAGE (Fixed)
+   - Original: Only 2022-2026 (bullish period)
+   - Fixed: Full 2010-2026 history (4,190 daily observations)
+
+================================================================================
+FINAL RESULTS (CORRECT METHODOLOGY + FULL DATA)
+================================================================================
+
+DEVIATION EVENTS:
+  Total events detected:        1,952
+  - Correlation breaks:         1,730
+  - Ratio deviations:           222
+
+PRICE IMPACT:
+  Average price change:         -1.01%
+  Median price change:          -1.05%
+  Positive movements:           900 (46.1%)
+  Negative movements:           1,052 (53.9%)
+  Z-Score/Price correlation:    0.120 (very weak)
 
 EXTREME EVENTS:
-Polar Vortex max |Z|            3.74        4.40        4.63
-Winter Storm Elliott max |Z|    7.23        7.99        8.42
-Overall max |Z|                 -           10.09       12.17
+  2014 Polar Vortex:
+    - Events: 5
+    - Max |Z-Score|: 4.63
+    - Avg price change: -11.51%
 
-Z-SCORE DISTRIBUTION:
-Events with |Z| > 3             -           747         795
-Events with |Z| > 5             -           142         168
-Events with |Z| > 10            -           3           9
+  Dec 2022 Winter Storm Elliott:
+    - Events: 49
+    - Max |Z-Score|: 8.42
+    - Avg price change: -34.56%
 
-================================================================================
-THE BUG AND ITS IMPACT
-================================================================================
-
-WHAT WAS WRONG:
-```python
-# BUGGY: includes current value in mean/std
-expanding_mean = series.expanding(min_periods=52).mean()
-expanding_std = series.expanding(min_periods=52).std()
-z_score = (series - expanding_mean) / expanding_std
-```
-
-When calculating the z-score for an extreme observation:
-- The extreme value is INCLUDED in the mean calculation (pulls mean toward it)
-- The extreme value is INCLUDED in the std calculation (inflates std)
-- Both effects DAMPEN the z-score, making extremes look less extreme
-
-```python
-# CORRECTED: excludes current value via shift(1)
-expanding_mean = series.expanding(min_periods=52).mean().shift(1)
-expanding_std = series.expanding(min_periods=52).std().shift(1)
-z_score = (series - expanding_mean) / expanding_std
-```
-
-IMPACT ON RESULTS:
-- Extreme z-scores increased by 5-20%
-- More events now exceed higher thresholds (|Z| > 5, |Z| > 10)
-- The dampening effect was most severe for the most extreme events
+Note: Both major weather events were followed by price DECREASES,
+contrary to what limited data suggested.
 
 ================================================================================
-KEY FINDINGS
+YEARLY BREAKDOWN OF PRICE CHANGES FOLLOWING DEVIATIONS
 ================================================================================
 
-1. DIRECTIONAL BIAS IS ROBUST
-   - Original: 86.4% of events followed by price increases
-   - Corrected: 89.3% of events followed by price increases
+Year    Avg Change    Events
+----    ----------    ------
+2011    -2.78%        150
+2012    +5.06%        141
+2013    -4.22%        59
+2014    -2.37%        18
+2015    -0.26%        87
+2016    +3.06%        398
+2017    -0.74%        246
+2018    +1.93%        115
+2019    -2.93%        116
+2020    +4.67%        67
+2021    -4.29%        114
+2022    -11.69%       121
+2023    -9.81%        145
+2024    -1.78%        151
+2025    +16.91%       24
 
-   The bullish signal is STRONGER with proper methodology.
-
-2. Z-SCORE/PRICE CORRELATION IS WEAKER THAN THOUGHT
-   - Original: 0.342 (moderate)
-   - Corrected: 0.246 (weak-moderate)
-
-   The relationship exists but was overstated by ~40%.
-
-3. EXTREME EVENTS ARE MORE EXTREME
-   - Polar Vortex: 3.74 -> 4.63 (+24%)
-   - Winter Storm Elliott: 7.23 -> 8.42 (+16%)
-   - Max z-score: now 12.17 (was ~10)
-
-4. MORE EVENTS DETECTED
-   - 1,439 -> 1,952 (+36%)
-   - Early-period anomalies now correctly flagged
+No consistent pattern - results vary by year based on overall market conditions.
 
 ================================================================================
-RECOMMENDATION
+WHAT THE ANALYSIS DOES SHOW
 ================================================================================
 
-Use the CORRECTED methodology (with shift) for all analysis. The key insight
-(deviation events precede price increases 89% of the time) is robust and
-actually stronger with proper methodology.
+1. DEVIATIONS ARE DETECTABLE
+   The methodology successfully identifies unusual regional storage patterns.
+   Extreme weather events (Polar Vortex, Winter Storm Elliott) register with
+   high z-scores (4-8+ standard deviations).
 
-The z-score magnitude correlation is weaker, suggesting:
-- Use deviation events as a directional signal (bullish bias)
-- Don't over-weight position sizes based on z-score magnitude
-- The signal is more about "something unusual happened" than "how unusual"
+2. NO DIRECTIONAL SIGNAL
+   Knowing that a deviation occurred does NOT tell you which way prices will
+   move. The 46/54 split is essentially random.
+
+3. WEAK MAGNITUDE CORRELATION
+   The correlation between deviation magnitude and price change magnitude is
+   only 0.12 - essentially no relationship.
+
+4. DEVIATIONS MAY INDICATE VOLATILITY
+   While direction is unpredictable, deviations may signal increased price
+   volatility (further analysis needed).
+
+================================================================================
+LESSONS LEARNED
+================================================================================
+
+1. ALWAYS USE COMPLETE DATA
+   Limited time periods can create spurious patterns that disappear with
+   fuller datasets.
+
+2. BEWARE OF LOOK-AHEAD BIAS
+   Using future information to analyze past events creates false confidence.
+
+3. VALIDATE AGAINST OUT-OF-SAMPLE DATA
+   The 2022-2026 "bullish signal" would have failed immediately when tested
+   against 2010-2021 data.
+
+4. CHECK YOUR EXPANDING WINDOWS
+   Including the current observation in rolling/expanding calculations is a
+   subtle bug that dampens extreme values.
 
 ================================================================================
 FILES GENERATED
 ================================================================================
 
-- deviation_events.csv         : All deviation events (corrected methodology)
-- price_impact_analysis.csv    : Price impact analysis (corrected methodology)
+- deviation_events.csv         : All 1,952 deviation events
+- price_impact_analysis.csv    : Price impact with full history
 - storage_analysis_report.txt  : Full analysis report
-- methodology_comparison.txt   : This comparison document
-- Visualization PNGs (1-5)     : Charts updated with corrected methodology
+- methodology_comparison.txt   : This document
+- Visualization PNGs (1-5)     : Updated charts
 
 ================================================================================
-END OF COMPARISON
+END OF ANALYSIS
 ================================================================================

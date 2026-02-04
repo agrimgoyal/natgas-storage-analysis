@@ -2,7 +2,7 @@
 NATURAL GAS STORAGE REGIONAL CORRELATION ANALYSIS REPORT
 ================================================================================
 
-Analysis Date: 2026-02-04 17:58:41
+Analysis Date: 2026-02-04 18:03:32
 Data Period: 2010-01-01 00:00:00 to 2026-01-23 00:00:00
 Regions Analyzed: 8
 Total Observations: 839
@@ -255,14 +255,14 @@ Most Significant Events (by Z-Score):
 --------------------------------------------------------------------------------
 
 Events with Price Data: 1952
-Average Price Change: 8.35%
-Median Price Change: 10.30%
-Average Volatility: $1.52
+Average Price Change: -1.01%
+Median Price Change: -1.05%
+Average Volatility: $0.19
 
-Positive Price Movements: 1744 (89.3%)
-Negative Price Movements: 208 (10.7%)
+Positive Price Movements: 900 (46.1%)
+Negative Price Movements: 1052 (53.9%)
 
-Correlation (|Z-Score| vs |Price Change%|): 0.246
+Correlation (|Z-Score| vs |Price Change%|): 0.120
 Interpretation: Weak relationship
 
 ================================================================================
