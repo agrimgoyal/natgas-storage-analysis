@@ -668,7 +668,7 @@ class StorageCorrelationAnalyzer:
             ax1.axhline(4, color='gray', linestyle=':', alpha=0.5, linewidth=1)
 
             ax1.set_ylabel('|Z-Score| (Deviation Magnitude)', fontsize=12, fontweight='bold')
-            ax1.set_title('Trading Signals Timeline\nGreen ▲ = Go Long (East Undersupply) | Red ▼ = Go Short (Pacific Decorrelation)',
+            ax1.set_title('Trading Signals Timeline\nGreen Triangle = Go Long (East Undersupply) | Red Triangle = Go Short (Pacific Decorrelation)',
                          fontsize=14, fontweight='bold')
             ax1.legend(loc='upper left', fontsize=10)
             ax1.grid(True, alpha=0.3)
@@ -688,7 +688,7 @@ class StorageCorrelationAnalyzer:
             plt.tight_layout()
             plt.savefig(f'{output_dir}/4_trading_signals.png', dpi=300, bbox_inches='tight')
             plt.close()
-        
+
         # 5. Trading Signal Performance (redesigned for clarity)
         if hasattr(self, 'price_impact') and self.price_impact is not None and len(self.price_impact) > 0:
             fig_count += 1
@@ -700,6 +700,7 @@ class StorageCorrelationAnalyzer:
 
             east_under = ratio_devs[(ratio_devs['Event_Pair'].str.contains('East')) & (ratio_devs['Event_ZScore'] < 0)]
             pacific = corr_breaks[corr_breaks['Event_Pair'].str.contains('Pacific')]
+            pacific = pacific.copy()
             pacific['Z_Abs'] = pacific['Event_ZScore'].abs()
 
             # 5a. Signal Performance Summary (Bar Chart)
@@ -768,7 +769,7 @@ class StorageCorrelationAnalyzer:
 
                 ax3.set_xlabel('|Z-Score| (Deviation Magnitude)', fontsize=12, fontweight='bold')
                 ax3.set_ylabel('Price Change %', fontsize=12, fontweight='bold')
-                ax3.set_title('Pacific Signal: Larger Deviations → Larger Drops', fontsize=14, fontweight='bold')
+                ax3.set_title('Pacific Signal: Larger Deviations = Larger Drops', fontsize=14, fontweight='bold')
                 ax3.legend(loc='upper right')
                 ax3.grid(True, alpha=0.3)
 
@@ -779,9 +780,9 @@ class StorageCorrelationAnalyzer:
             # Create summary table
             table_data = [
                 ['Signal', 'Events', 'Win Rate', 'Avg Return', 'Best Threshold'],
-                ['─' * 12, '─' * 8, '─' * 10, '─' * 12, '─' * 15],
-                ['East Undersupply', f'{len(east_under)}', f'{east_win:.1f}%', f'{east_ret:+.1f}%', '|Z| ≥ 2.0'],
-                ['Pacific (all)', f'{len(pacific)}', f'{pacific_win:.1f}%', f'{pacific_ret:+.1f}%', '|Z| ≥ 2.0'],
+                ['_' * 12, '_' * 8, '_' * 10, '_' * 12, '_' * 15],
+                ['East Undersupply', f'{len(east_under)}', f'{east_win:.1f}%', f'{east_ret:+.1f}%', '|Z| >= 2.0'],
+                ['Pacific (all)', f'{len(pacific)}', f'{pacific_win:.1f}%', f'{pacific_ret:+.1f}%', '|Z| >= 2.0'],
             ]
 
             # Add Pacific by threshold
@@ -790,7 +791,7 @@ class StorageCorrelationAnalyzer:
                 if len(subset) > 0:
                     win = len(subset[subset['Price_Change_Pct'] < 0]) / len(subset) * 100
                     ret = subset['Price_Change_Pct'].mean()
-                    table_data.append([f'Pacific |Z|≥{thresh}', f'{len(subset)}', f'{win:.1f}%', f'{ret:+.1f}%', ''])
+                    table_data.append([f'Pacific |Z|>={thresh}', f'{len(subset)}', f'{win:.1f}%', f'{ret:+.1f}%', ''])
 
             # Draw table
             y_pos = 0.95
