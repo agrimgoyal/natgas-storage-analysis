@@ -2,7 +2,7 @@
 NATURAL GAS STORAGE REGIONAL CORRELATION ANALYSIS REPORT
 ================================================================================
 
-Analysis Date: 2026-02-04 18:15:23
+Analysis Date: 2026-02-05 10:18:58
 Data Period: 2010-01-01 00:00:00 to 2026-01-23 00:00:00
 Regions Analyzed: 8
 Total Observations: 839

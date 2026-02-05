@@ -627,75 +627,186 @@ class StorageCorrelationAnalyzer:
             plt.savefig(f'{output_dir}/3_storage_ratios.png', dpi=300, bbox_inches='tight')
             plt.close()
         
-        # 4. Deviation Events Timeline
+        # 4. Trading Signals Timeline (redesigned for clarity)
         if hasattr(self, 'all_deviations') and len(self.all_deviations) > 0:
             fig_count += 1
-            fig, ax = plt.subplots(figsize=(16, 6))
-            
-            for event_type in self.all_deviations['Type'].unique():
-                subset = self.all_deviations[self.all_deviations['Type'] == event_type]
-                ax.scatter(subset['Date'], subset['Z-Score'].abs(), 
-                          label=event_type, alpha=0.6, s=100)
-            
-            ax.axhline(2, color='orange', linestyle='--', alpha=0.5, label='2σ Threshold')
-            ax.axhline(3, color='red', linestyle='--', alpha=0.5, label='3σ Threshold')
-            
-            ax.set_xlabel('Date', fontweight='bold')
-            ax.set_ylabel('|Z-Score|', fontweight='bold')
-            ax.set_title('Deviation Events Timeline', fontsize=14, fontweight='bold')
-            ax.legend(loc='best')
-            ax.grid(True, alpha=0.3)
-            
+            fig, axes = plt.subplots(2, 1, figsize=(16, 10), gridspec_kw={'height_ratios': [2, 1]})
+
+            # Identify key trading signals
+            ratio_devs = self.all_deviations[self.all_deviations['Type'] == 'Ratio Deviation']
+            corr_breaks = self.all_deviations[self.all_deviations['Type'] == 'Correlation Break']
+
+            # East undersupply (bullish signal)
+            east_under = ratio_devs[(ratio_devs['Pair'].str.contains('East')) & (ratio_devs['Z-Score'] < 0)]
+            # Pacific decorrelation (bearish signal)
+            pacific = corr_breaks[corr_breaks['Pair'].str.contains('Pacific')]
+            # Other events
+            other_ratio = ratio_devs[~((ratio_devs['Pair'].str.contains('East')) & (ratio_devs['Z-Score'] < 0))]
+            other_corr = corr_breaks[~corr_breaks['Pair'].str.contains('Pacific')]
+
+            ax1 = axes[0]
+            # Plot other events in gray (background)
+            if len(other_ratio) > 0:
+                ax1.scatter(other_ratio['Date'], other_ratio['Z-Score'].abs(),
+                           c='lightgray', alpha=0.3, s=30, label='Other Ratio Deviations')
+            if len(other_corr) > 0:
+                ax1.scatter(other_corr['Date'], other_corr['Z-Score'].abs(),
+                           c='lightgray', alpha=0.3, s=30, label='_nolegend_')
+
+            # Plot trading signals prominently
+            if len(east_under) > 0:
+                ax1.scatter(east_under['Date'], east_under['Z-Score'].abs(),
+                           c='green', alpha=0.8, s=100, marker='^',
+                           label=f'LONG Signal: East Undersupply ({len(east_under)} events)')
+            if len(pacific) > 0:
+                ax1.scatter(pacific['Date'], pacific['Z-Score'].abs(),
+                           c='red', alpha=0.8, s=100, marker='v',
+                           label=f'SHORT Signal: Pacific Decorrelation ({len(pacific)} events)')
+
+            ax1.axhline(2, color='gray', linestyle='--', alpha=0.5, linewidth=1)
+            ax1.axhline(3, color='gray', linestyle=':', alpha=0.5, linewidth=1)
+            ax1.axhline(4, color='gray', linestyle=':', alpha=0.5, linewidth=1)
+
+            ax1.set_ylabel('|Z-Score| (Deviation Magnitude)', fontsize=12, fontweight='bold')
+            ax1.set_title('Trading Signals Timeline\nGreen ▲ = Go Long (East Undersupply) | Red ▼ = Go Short (Pacific Decorrelation)',
+                         fontsize=14, fontweight='bold')
+            ax1.legend(loc='upper left', fontsize=10)
+            ax1.grid(True, alpha=0.3)
+            ax1.set_xlim(self.all_deviations['Date'].min(), self.all_deviations['Date'].max())
+
+            # Bottom panel: Price with signal markers
+            ax2 = axes[1]
+            if self.price_data is not None:
+                # Resample price to weekly for cleaner chart
+                weekly_price = self.price_data.resample('W').last()
+                ax2.plot(weekly_price.index, weekly_price['Price'], color='black', linewidth=1, alpha=0.7)
+                ax2.fill_between(weekly_price.index, weekly_price['Price'], alpha=0.1, color='blue')
+                ax2.set_ylabel('Natural Gas Price ($)', fontsize=12, fontweight='bold')
+                ax2.set_xlabel('Date', fontsize=12, fontweight='bold')
+                ax2.grid(True, alpha=0.3)
+
             plt.tight_layout()
-            plt.savefig(f'{output_dir}/4_deviation_events.png', dpi=300, bbox_inches='tight')
+            plt.savefig(f'{output_dir}/4_trading_signals.png', dpi=300, bbox_inches='tight')
             plt.close()
         
-        # 5. Price Impact Analysis
+        # 5. Trading Signal Performance (redesigned for clarity)
         if hasattr(self, 'price_impact') and self.price_impact is not None and len(self.price_impact) > 0:
             fig_count += 1
-            fig, axes = plt.subplots(2, 2, figsize=(14, 10))
-            
-            # 5a. Z-Score vs Price Change
-            axes[0, 0].scatter(self.price_impact['Event_ZScore'].abs(), 
-                              self.price_impact['Price_Change_Pct'],
-                              alpha=0.6, s=80)
-            axes[0, 0].set_xlabel('Event |Z-Score|', fontweight='bold')
-            axes[0, 0].set_ylabel('Price Change %', fontweight='bold')
-            axes[0, 0].set_title('Deviation Magnitude vs Price Impact', fontweight='bold')
-            axes[0, 0].grid(True, alpha=0.3)
-            axes[0, 0].axhline(0, color='red', linestyle='--', alpha=0.5)
-            
-            # 5b. Price Change Distribution
-            axes[0, 1].hist(self.price_impact['Price_Change_Pct'], bins=30, 
-                           color='steelblue', alpha=0.7, edgecolor='black')
-            axes[0, 1].axvline(0, color='red', linestyle='--', alpha=0.7)
-            axes[0, 1].set_xlabel('Price Change %', fontweight='bold')
-            axes[0, 1].set_ylabel('Frequency', fontweight='bold')
-            axes[0, 1].set_title('Distribution of Price Changes', fontweight='bold')
-            axes[0, 1].grid(True, alpha=0.3)
-            
-            # 5c. Event Type vs Price Change
-            event_types = self.price_impact.groupby('Event_Type')['Price_Change_Pct'].mean()
-            axes[1, 0].barh(range(len(event_types)), event_types.values, color='coral')
-            axes[1, 0].set_yticks(range(len(event_types)))
-            axes[1, 0].set_yticklabels(event_types.index)
-            axes[1, 0].set_xlabel('Avg Price Change %', fontweight='bold')
-            axes[1, 0].set_title('Average Price Impact by Event Type', fontweight='bold')
-            axes[1, 0].axvline(0, color='red', linestyle='--', alpha=0.5)
-            axes[1, 0].grid(True, alpha=0.3, axis='x')
-            
-            # 5d. Volatility vs Z-Score
-            axes[1, 1].scatter(self.price_impact['Event_ZScore'].abs(), 
-                              self.price_impact['Volatility'],
-                              alpha=0.6, s=80, color='purple')
-            axes[1, 1].set_xlabel('Event |Z-Score|', fontweight='bold')
-            axes[1, 1].set_ylabel('Price Volatility', fontweight='bold')
-            axes[1, 1].set_title('Deviation Magnitude vs Price Volatility', fontweight='bold')
-            axes[1, 1].grid(True, alpha=0.3)
-            
-            plt.suptitle('Price Impact Analysis', fontsize=16, fontweight='bold')
+            fig, axes = plt.subplots(2, 2, figsize=(16, 12))
+
+            # Identify trading signals in price impact data
+            ratio_devs = self.price_impact[self.price_impact['Event_Type'] == 'Ratio Deviation']
+            corr_breaks = self.price_impact[self.price_impact['Event_Type'] == 'Correlation Break']
+
+            east_under = ratio_devs[(ratio_devs['Event_Pair'].str.contains('East')) & (ratio_devs['Event_ZScore'] < 0)]
+            pacific = corr_breaks[corr_breaks['Event_Pair'].str.contains('Pacific')]
+            pacific['Z_Abs'] = pacific['Event_ZScore'].abs()
+
+            # 5a. Signal Performance Summary (Bar Chart)
+            ax1 = axes[0, 0]
+            signals = ['East Undersupply\n(LONG)', 'Pacific Decorrelation\n(SHORT)', 'All Other\nEvents']
+
+            # Calculate metrics
+            east_win = len(east_under[east_under['Price_Change_Pct'] > 0]) / len(east_under) * 100 if len(east_under) > 0 else 0
+            pacific_win = len(pacific[pacific['Price_Change_Pct'] < 0]) / len(pacific) * 100 if len(pacific) > 0 else 0
+            other = self.price_impact[~self.price_impact.index.isin(east_under.index) & ~self.price_impact.index.isin(pacific.index)]
+            other_win = 50  # baseline
+
+            win_rates = [east_win, pacific_win, other_win]
+            colors = ['green', 'red', 'gray']
+
+            bars = ax1.bar(signals, win_rates, color=colors, alpha=0.7, edgecolor='black')
+            ax1.axhline(50, color='black', linestyle='--', linewidth=2, label='Random (50%)')
+            ax1.set_ylabel('Win Rate %', fontsize=12, fontweight='bold')
+            ax1.set_title('Trading Signal Win Rates', fontsize=14, fontweight='bold')
+            ax1.set_ylim(0, 100)
+
+            # Add value labels on bars
+            for bar, rate in zip(bars, win_rates):
+                ax1.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 2,
+                        f'{rate:.1f}%', ha='center', fontsize=12, fontweight='bold')
+
+            ax1.legend(loc='lower right')
+            ax1.grid(True, alpha=0.3, axis='y')
+
+            # 5b. Average Returns by Signal
+            ax2 = axes[0, 1]
+            east_ret = east_under['Price_Change_Pct'].mean() if len(east_under) > 0 else 0
+            pacific_ret = pacific['Price_Change_Pct'].mean() if len(pacific) > 0 else 0
+            other_ret = other['Price_Change_Pct'].mean() if len(other) > 0 else 0
+
+            returns = [east_ret, pacific_ret, other_ret]
+            bar_colors = ['green' if r > 0 else 'red' for r in returns]
+
+            bars = ax2.bar(signals, returns, color=bar_colors, alpha=0.7, edgecolor='black')
+            ax2.axhline(0, color='black', linestyle='-', linewidth=1)
+            ax2.set_ylabel('Avg 4-Week Return %', fontsize=12, fontweight='bold')
+            ax2.set_title('Average Returns by Signal Type', fontsize=14, fontweight='bold')
+
+            for bar, ret in zip(bars, returns):
+                y_pos = bar.get_height() + 0.5 if ret >= 0 else bar.get_height() - 1.5
+                ax2.text(bar.get_x() + bar.get_width()/2, y_pos,
+                        f'{ret:+.1f}%', ha='center', fontsize=12, fontweight='bold')
+
+            ax2.grid(True, alpha=0.3, axis='y')
+
+            # 5c. Pacific Signal: Z-Score vs Return (shows scaling)
+            ax3 = axes[1, 0]
+            if len(pacific) > 0:
+                scatter = ax3.scatter(pacific['Z_Abs'], pacific['Price_Change_Pct'],
+                                     c=pacific['Price_Change_Pct'], cmap='RdYlGn_r',
+                                     alpha=0.6, s=60, edgecolors='black', linewidth=0.5)
+                ax3.axhline(0, color='black', linestyle='-', linewidth=1)
+                ax3.axvline(3, color='orange', linestyle='--', alpha=0.7, label='|Z|=3 threshold')
+                ax3.axvline(4, color='red', linestyle='--', alpha=0.7, label='|Z|=4 threshold')
+
+                # Add trend line
+                z = np.polyfit(pacific['Z_Abs'], pacific['Price_Change_Pct'], 1)
+                p = np.poly1d(z)
+                x_line = np.linspace(pacific['Z_Abs'].min(), pacific['Z_Abs'].max(), 100)
+                ax3.plot(x_line, p(x_line), 'b--', linewidth=2, alpha=0.7, label=f'Trend (corr={pacific["Z_Abs"].corr(pacific["Price_Change_Pct"]):.2f})')
+
+                ax3.set_xlabel('|Z-Score| (Deviation Magnitude)', fontsize=12, fontweight='bold')
+                ax3.set_ylabel('Price Change %', fontsize=12, fontweight='bold')
+                ax3.set_title('Pacific Signal: Larger Deviations → Larger Drops', fontsize=14, fontweight='bold')
+                ax3.legend(loc='upper right')
+                ax3.grid(True, alpha=0.3)
+
+            # 5d. Summary Statistics Table
+            ax4 = axes[1, 1]
+            ax4.axis('off')
+
+            # Create summary table
+            table_data = [
+                ['Signal', 'Events', 'Win Rate', 'Avg Return', 'Best Threshold'],
+                ['─' * 12, '─' * 8, '─' * 10, '─' * 12, '─' * 15],
+                ['East Undersupply', f'{len(east_under)}', f'{east_win:.1f}%', f'{east_ret:+.1f}%', '|Z| ≥ 2.0'],
+                ['Pacific (all)', f'{len(pacific)}', f'{pacific_win:.1f}%', f'{pacific_ret:+.1f}%', '|Z| ≥ 2.0'],
+            ]
+
+            # Add Pacific by threshold
+            for thresh in [3.0, 4.0]:
+                subset = pacific[pacific['Z_Abs'] >= thresh]
+                if len(subset) > 0:
+                    win = len(subset[subset['Price_Change_Pct'] < 0]) / len(subset) * 100
+                    ret = subset['Price_Change_Pct'].mean()
+                    table_data.append([f'Pacific |Z|≥{thresh}', f'{len(subset)}', f'{win:.1f}%', f'{ret:+.1f}%', ''])
+
+            # Draw table
+            y_pos = 0.95
+            for row in table_data:
+                x_positions = [0.05, 0.30, 0.45, 0.62, 0.80]
+                for x, text in zip(x_positions, row):
+                    fontweight = 'bold' if row == table_data[0] else 'normal'
+                    ax4.text(x, y_pos, text, fontsize=11, fontweight=fontweight,
+                            family='monospace', transform=ax4.transAxes)
+                y_pos -= 0.12
+
+            ax4.set_title('Signal Summary Statistics', fontsize=14, fontweight='bold', pad=20)
+
+            plt.suptitle('Trading Signal Performance Analysis', fontsize=16, fontweight='bold', y=1.02)
             plt.tight_layout()
-            plt.savefig(f'{output_dir}/5_price_impact_analysis.png', dpi=300, bbox_inches='tight')
+            plt.savefig(f'{output_dir}/5_signal_performance.png', dpi=300, bbox_inches='tight')
             plt.close()
         
         print(f"Created {fig_count} visualization files")
